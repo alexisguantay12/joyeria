@@ -28,75 +28,102 @@
             color: #d4af37; /* Dorado */
         }
 
-        .navbar-custom .nav-link.text-danger:hover {
-            color: #ff4d4d !important; /* Rojo suave para logout */
+        .navbar-custom .dropdown-menu {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+        }
+
+        .navbar-custom .dropdown-item:hover {
+            background-color: #f1f1f1;
         }
 
         .container {
             max-width: 900px;
         }
+
+        .navbar-toggler {
+            border: none;
+        }
+
+        .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba(248, 249, 250, 1)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
+        }
     </style>
 </head>
 <body>
 
-    <!-- Barra de navegación -->
-    <nav class="navbar navbar-expand-lg navbar-custom shadow-sm">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Joyería</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="fas fa-home"></i> Inicio</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'products_app:productos' %}"><i class="fas fa-gem"></i> Productos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'products_app:lista_ingresos' %}"><i class="fas fa-box-open"></i> Ingreso Stock</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="fas fa-cash-register"></i> Ventas</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="fas fa-chart-line"></i> Reportes</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-danger" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
-                            <i class="fas fa-sign-out-alt"></i> Cerrar sesión
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Contenido principal -->
-    <div class="px-md-5 mt-5">
-        {% block content %}
-        {% endblock %}
-    </div>
-
-    <!-- Modal de Confirmación de Logout -->
-    <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="logoutModalLabel">¿Cerrar sesión?</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-                    ¿Estás seguro de que deseas cerrar sesión?
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-                    <a href="{% url 'users_app:logout' %}" class="btn btn-danger">Sí, cerrar sesión</a>
-                </div>
-            </div>
+<!-- Barra de navegación -->
+<nav class="navbar navbar-expand-lg navbar-custom shadow-sm">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">Joyería</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="#"><i class="fas fa-home"></i> Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'products_app:productos' %}"><i class="fas fa-gem"></i> Productos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'products_app:lista_ingresos' %}"><i class="fas fa-box-open"></i> Ingreso Stock</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#"><i class="fas fa-cash-register"></i> Ventas</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#"><i class="fas fa-chart-line"></i> Reportes</a>
+                </li>
+                <!-- Menú de Usuario -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user-circle me-2"></i>  {{ request.user.username }}  
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        <li>
+                            <a class="dropdown-item" href="#">
+                                <i class="fas fa-key me-2"></i> Cambiar contraseña
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                                <i class="fas fa-sign-out-alt me-2"></i> Cerrar sesión
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
         </div>
     </div>
+</nav>
+
+<!-- Contenido principal -->
+<div class="px-md-5 mt-5">
+    {% block content %}
+    {% endblock %}
+</div>
+
+<!-- Modal de Confirmación de Logout -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logoutModalLabel">¿Cerrar sesión?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                ¿Estás seguro de que deseas cerrar sesión?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                <a href="{% url 'users_app:logout' %}" class="btn btn-danger">Sí, cerrar sesión</a>
+            </div>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
