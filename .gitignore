@@ -5,6 +5,7 @@ __pycache__/
 # Base de datos y claves
 db.sqlite3
 .env
+secret.json
 secret
 
 # Archivos de medios
