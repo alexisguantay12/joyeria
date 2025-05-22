@@ -1,5 +1,4 @@
 barcode_generator==0.1rc15
 Django==3.2.25
-django_timestamps==0.0.1
-Pillow==6.1.0
+django_timestamps==0.0.1 
 Pillow==11.2.1
