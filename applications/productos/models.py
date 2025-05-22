@@ -84,7 +84,7 @@ class Local(BaseAbstractWithUser):
 class StockLocal(BaseAbstractWithUser):
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
     local = models.ForeignKey(Local, on_delete=models.CASCADE)
-    cantidad = models.PositiveIntegerField(default=0)
+    cantidad = models.IntegerField(default=0)
 
     class Meta:
         unique_together = ('producto', 'local')
