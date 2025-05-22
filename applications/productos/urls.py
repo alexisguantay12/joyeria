@@ -5,7 +5,7 @@ app_name = 'products_app'
 
 urlpatterns = [
     path('agregar/', views.agregar_producto, name='agregar_producto'),  # Formulario para agregar producto
-    path('productos/', views.lista_productos, name='productos'),  # Listado de productos
+    path('', views.lista_productos, name='productos'),  # Listado de productos
     # urls.py
     path('producto/imprimir/<int:producto_id>/', views.imprimir_codigo, name='imprimir_codigo'),
 
