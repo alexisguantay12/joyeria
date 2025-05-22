@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h3 class="card-title mb-4 text-primary">
+                <i class="fas fa-plus-circle"></i> Agregar Producto
+            </h3>
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+            
+                <div class="row mb-2">
+                    <div class="col-md-4">
+                        <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre del Producto</label>
+                        <input type="text" name="{{ form.nombre.name }}" id="{{ form.nombre.id_for_label }}"
+                            class="form-control form-control-sm" value="{{ form.nombre.value|default_if_none:'' }}">
+                    </div>
+            
+                    <div class="col-md-4">
+                        <label for="{{ form.precio_venta.id_for_label }}" class="form-label">Precio de Venta</label>
+                        <input type="number" step="0.01" name="{{ form.precio_venta.name }}"
+                            id="{{ form.precio_venta.id_for_label }}" class="form-control form-control-sm"
+                            value="{{ form.precio_venta.value|default_if_none:'' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="cantidad" class="form-label">Cantidad</label>
+                        <input type="number" step="1" name="cantidad"
+                            id="cantidad" class="form-control form-control-sm"
+                            value="0">
+                    </div>
+                </div>
+            
+                <div class="mb-2">
+                    <label for="{{ form.descripcion.id_for_label }}" class="form-label">Descripción</label>
+                    <textarea name="{{ form.descripcion.name }}" id="{{ form.descripcion.id_for_label }}"
+                        class="form-control form-control-sm" rows="2">{{ form.descripcion.value|default_if_none:'' }}</textarea>
+                </div>
+            
+                <div class="row mb-2">
+                    <div class="col-md-6">
+                        <label for="{{ form.categoria.id_for_label }}" class="form-label">Categoría</label>
+                        <select name="{{ form.categoria.name }}" id="{{ form.categoria.id_for_label }}"
+                            class="form-select form-select-sm">
+                            {% for option in form.categoria.field.choices %}
+                                <option value="{{ option.0 }}" {% if form.categoria.value == option.0 %}selected{% endif %}>
+                                    {{ option.1 }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+            
+                    <div class="col-md-6">
+                        <label for="{{ form.imagen.id_for_label }}" class="form-label">Imagen del Producto</label>
+                        <input type="file" name="{{ form.imagen.name }}" id="{{ form.imagen.id_for_label }}"
+                            class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <!-- Cámara: Capturar imagen con webcam -->
+                <div class="card mt-3">
+                    <div class="card-header bg-light">
+                        <strong><i class="fas fa-camera"></i> Capturar Foto desde Cámara</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 text-center">
+                                <video id="video" width="100%" height="240" autoplay class="border rounded shadow-sm"></video>
+                                <canvas id="canvas" width="320" height="240" class="d-none border rounded mt-2 shadow-sm"></canvas>
+                            </div>
+                            <div class="col-md-6 d-flex flex-column justify-content-center align-items-center gap-2">
+                                <button type="button" class="btn btn-dark btn-sm w-100" onclick="capturar()">
+                                    <i class="fas fa-camera"></i> Capturar
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm w-100 d-none" id="btnReiniciar" onclick="reiniciarCamara()">
+                                    <i class="fas fa-sync-alt"></i> Tomar otra foto
+                                </button>
+                            </div>
+                        </div>
+                        <input type="hidden" name="webcam_image" id="webcam_image">
+                    </div>
+                </div>
+            
+                <div class="d-grid mt-3">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-save"></i> Guardar Producto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Script para capturar imagen de webcam -->
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const webcamInput = document.getElementById('webcam_image');
+    const btnReiniciar = document.getElementById('btnReiniciar');
+    let stream;
+
+    // Iniciar la cámara
+    function iniciarCamara() {
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then((s) => {
+                stream = s;
+                video.srcObject = stream;
+                video.classList.remove('d-none');
+                canvas.classList.add('d-none');
+                btnReiniciar.classList.add('d-none');
+            })
+            .catch((err) => {
+                console.error("Error accediendo a la cámara: ", err);
+            });
+    }
+
+    // Capturar imagen y apagar cámara
+    function capturar() {
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/png');
+        webcamInput.value = imageData;
+
+        // Mostrar imagen y ocultar video
+        video.classList.add('d-none');
+        canvas.classList.remove('d-none');
+        btnReiniciar.classList.remove('d-none');
+
+        // Apagar cámara
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+    }
+
+    // Reiniciar cámara para tomar otra foto
+    function reiniciarCamara() {
+        iniciarCamara();
+    }
+
+    // Ejecutar al cargar la página
+    iniciarCamara();
+</script>
+{% endblock %}

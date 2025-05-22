@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="px-3 px-md-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="text-primary"><i class="fas fa-boxes"></i> Lista de Productos</h3>
+        <a href="{% url 'products_app:agregar_producto'%}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Agregar Producto
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if productos %}
+                <div class="table-responsive">
+                    <table id="tabla-productos" class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr> 
+                                <th>Imagen</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Precio</th>
+                                <th>Categoría</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for producto in productos %}
+                            <tr class="clickable-row" data-url="{% url 'products_app:detalle_producto' producto.id %}" style="cursor:pointer;"> 
+                                <td>
+                                    {% if producto.imagen %}
+                                        <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" class="img-thumbnail" style="width: 60px; height: 60px; object-fit: cover;">
+                                    {% else %}
+                                        <span class="text-muted">Sin imagen</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ producto.nombre }}</td>
+                                <td>{{ producto.descripcion|truncatechars:50 }}</td>
+                                <td>${{ producto.precio_venta }}</td>
+                                <td>{{ producto.categoria }}</td>
+                                <td class="sin-redireccion">
+                                    <a href="#" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
+                                    <a href="#" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro de eliminar este producto?');"><i class="fas fa-trash"></i></a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>                        
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">No hay productos cargados aún.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- FontAwesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+
+<!-- jQuery y DataTables JS -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<!-- Estilos para hover personalizado -->
+<style>
+    tr.clickable-row:hover td:not(.sin-redireccion) {
+        background-color: #f2f2f2 !important;
+    }
+
+    td.sin-redireccion {
+        cursor: default !important;
+        background-color: white !important;
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const rows = document.querySelectorAll(".clickable-row");
+        rows.forEach(row => {
+            row.addEventListener("click", function (e) {
+                // Evita la redirección si se hace clic en un elemento con la clase sin-redireccion
+                if (!e.target.closest('.sin-redireccion')) {
+                    window.location.href = row.dataset.url;
+                }
+            });
+        });
+
+        $('#tabla-productos').DataTable({
+            language: {
+                lengthMenu: "Mostrar _MENU_ registros",
+                zeroRecords: "No se encontraron resultados",
+                info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                infoEmpty: "Mostrando 0 a 0 de 0 registros",
+                infoFiltered: "(filtrado de _MAX_ registros totales)",
+                search: "Buscar:",
+                paginate: {
+                    first: "Primero",
+                    last: "Último",
+                    next: "Siguiente",
+                    previous: "Anterior"
+                }
+            },
+            pageLength: 10
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,19 @@
+# Archivos compilados
+*.pyc
+__pycache__/
+
+# Base de datos y claves
+db.sqlite3
+.env
+secret
+
+# Archivos de medios
+/media/
+*.log
+
+# Archivos estáticos generados
+/static/
+
+# Archivos de sistema y editores
+.DS_Store
+*.vscode/

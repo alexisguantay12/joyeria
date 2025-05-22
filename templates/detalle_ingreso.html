@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="px-3 px-md-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="text-primary">
+            <i class="fas fa-clipboard-list"></i> Detalle del Ingreso #{{ ingreso.id }}
+        </h3>
+        <a href="{% url 'products_app:lista_ingresos' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a la lista
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <p><strong>Fecha de ingreso:</strong> {{ ingreso.fecha|date:"d/m/Y H:i" }}</p>
+
+            {% if productos %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Producto</th>
+                                <th>Imagen</th>
+                                <th>Cantidad Ingresada</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in productos %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ item.producto.nombre }}</td>
+                                <td>
+                                    {% if item.producto.imagen %}
+                                        <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}" class="img-thumbnail" style="width: 60px; height: 60px; object-fit: cover;">
+                                    {% else %}
+                                        <span class="text-muted">Sin imagen</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.cantidad }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">Este ingreso no tiene productos registrados.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- FontAwesome para íconos -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}

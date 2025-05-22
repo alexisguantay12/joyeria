@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="mb-2">Ingreso de Mercadería</h1>
+    <p class="text-muted mb-4">Fecha: {{ fecha_actual }}</p>
+
+    <input type="text" id="scanner" class="form-control mb-4" placeholder="Escaneá el código de barras..." autofocus>
+
+    <div class="table-responsive mb-4">
+        <table class="table table-bordered table-striped align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Cantidad</th>
+                    <th class="text-center">Acción</th>
+                </tr>
+            </thead>
+            <tbody id="detalle-ingreso"></tbody>
+        </table>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-success" onclick="confirmarIngreso()">Confirmar Ingreso</button>
+        <a href="{% url 'products_app:lista_ingresos' %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modalProducto" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-nombre">Producto</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="modal-img" src="" alt="Imagen" class="img-fluid mb-3" style="max-height: 150px;">
+        <p class="mb-1">Código: <span id="modal-codigo"></span></p>
+        <p class="mb-3">Stock actual: <span id="modal-stock">0</span></p>
+        <input type="number" id="modal-cantidad" class="form-control" placeholder="Cantidad entregada">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="confirmarProducto()">Agregar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+    let productoActual = null;
+    const productosIngresados = new Map();  
+    const localId = 1
+    const scanner = document.getElementById("scanner");
+    
+    const modalElement = document.getElementById("modalProducto");
+    const modal = new bootstrap.Modal(modalElement);
+    
+    const modalImg = document.getElementById("modal-img");
+    const modalNombre = document.getElementById("modal-nombre");
+    const modalStock = document.getElementById("modal-stock");
+    const modalCantidad = document.getElementById("modal-cantidad");
+    
+    scanner.addEventListener("change", function() {
+        const codigo = this.value.trim();
+        if (!codigo) return;
+        
+        if (productosIngresados.has(codigo)) {
+            alert("Este producto ya fue ingresado. Modificá la cantidad desde la tabla.");
+            scanner.value = "";
+            return;
+        }
+    
+        fetch(`/productos/buscar_producto_por_codigo/?codigo=${codigo}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const p = data.producto;
+                    productoActual = p; // Guardamos producto actual
+                    modalImg.src = p.foto;
+                    modalNombre.textContent = p.nombre;  
+                    modalStock.textContent = p.stock?? '0';
+                    modalCantidad.value = "1s";
+                    setTimeout(() => modalCantidad.focus(), 100);
+                    modal.show();
+                } else {
+                    alert("Producto no encontrado.");
+                }
+            })
+            .catch(err => {
+                alert("Error al buscar el producto.");
+                console.error(err);
+            });
+    
+        this.value = "";
+    });
+    
+    function confirmarProducto() {
+        const cantidad = parseInt(document.getElementById("modal-cantidad").value);
+        if (!cantidad || cantidad <= 0) {
+            alert("Ingresá una cantidad válida.");
+            return;
+        }
+    
+        agregarFila(productoActual, cantidad);
+        productosIngresados.set(productoActual.codigo_barras, productoActual.id);
+        modal.hide();
+        scanner.focus();
+    }
+    
+    function agregarFila(producto, cantidad) {
+        const fila = document.createElement("tr");
+        fila.setAttribute("data-producto-id", producto.id);
+        fila.innerHTML = `
+            <td>${producto.id}</td>
+            <td>${producto.nombre}</td>
+            <td>${cantidad}</td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-danger" onclick="this.closest('tr').remove(); productosIngresados.delete('${producto.codigo_barras}')">Eliminar</button>
+            </td>
+        `;
+        document.getElementById("detalle-ingreso").appendChild(fila);
+    }
+    
+    function confirmarIngreso() {
+        const filas = document.querySelectorAll("#detalle-ingreso tr");
+        if (filas.length === 0) {
+            alert("No hay productos cargados.");
+            return;
+        }
+    
+        const datos = [];
+        filas.forEach(fila => {
+            datos.push({
+                producto_id: fila.getAttribute("data-producto-id"),
+                cantidad: fila.children[2].textContent
+            });
+        });
+    
+        fetch("{% url 'products_app:registrar_ingreso' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie('csrftoken')
+            },
+            body: JSON.stringify({ local_id: localId, productos: datos })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert("Ingreso registrado con éxito.");
+                location.reload();
+            } else {
+                alert("Error al registrar el ingreso.");
+            }
+        });
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}
