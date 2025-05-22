@@ -81,7 +81,7 @@ def agregar_producto(request):
                 new_img = Image.new("RGB", (img.width, new_height), "white")
                 new_img.paste(img, (0, 0))
 
-                font = ImageFont.truetype("arial.ttf", 30)
+                font = ImageFont.truetype("DejaVuSans.ttf", 30)
                 draw = ImageDraw.Draw(new_img)
 
                 char_spacing = 21
