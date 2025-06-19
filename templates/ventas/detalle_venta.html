@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="text-primary"><i class="fas fa-file-invoice"></i> Detalle de Venta #{{ venta.id }}</h5>
+            <hr>
+            <p><strong>Usuario:</strong> {{ venta.usuario.username }}</p>
+            <p><strong>Fecha:</strong> {{ venta.fecha|date:"d/m/Y H:i" }}</p>
+            <p><strong>Local:</strong> {{ venta.local.nombre }}</p>
+            <p><strong>Total:</strong> ${{ venta.total }}</p>
+
+            <div class="table-responsive mt-3">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Producto</th>
+                            <th>Precio Unitario</th>
+                            <th>Cantidad</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in detalles %}
+                        <tr>
+                            <td>{{ d.producto.nombre }}</td>
+                            <td>${{ d.precio_unitario }}</td>
+                            <td>{{ d.cantidad }}</td>
+                            <td>${{ d.precio_unitario|floatformat:2|add:""|add:d.cantidad|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <a href="{% url 'ventas_app:listado_ventas' %}" class="btn btn-secondary mt-3">Volver</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

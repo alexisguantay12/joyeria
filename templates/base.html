@@ -71,7 +71,7 @@
                     <a class="nav-link" href="{% url 'products_app:lista_ingresos' %}"><i class="fas fa-box-open"></i> Ingreso Stock</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#"><i class="fas fa-cash-register"></i> Ventas</a>
+                    <a class="nav-link" href="{% url 'ventas_app:listado_ventas' %}"><i class="fas fa-cash-register"></i> Ventas</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#"><i class="fas fa-chart-line"></i> Reportes</a>
@@ -101,7 +101,7 @@
 </nav>
 
 <!-- Contenido principal -->
-<div class="px-md-5 mt-5">
+<div class="px-md-5 mt-4">
     {% block content %}
     {% endblock %}
 </div>

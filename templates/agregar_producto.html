@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mt-3">
+<div class="container mt-1">
     <div class="card shadow-sm">
         <div class="card-body p-3">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -15,7 +15,7 @@
 
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
-
+                <input type="hidden" name="imprimir" id="imprimir" value="false">
                 <div class="row mb-2">
                     <div class="col-md-4">
                         <label class="form-label mb-1">Nombre</label>
@@ -38,7 +38,7 @@
                 <div class="mb-2">
                     <label class="form-label mb-1">Descripción</label>
                     <textarea name="{{ form.descripcion.name }}" id="{{ form.descripcion.id_for_label }}"
-                              class="form-control form-control-sm" rows="1">{{ form.descripcion.value|default_if_none:'' }}</textarea>
+                              class="form-control form-control-sm" rows="2">{{ form.descripcion.value|default_if_none:'' }}</textarea>
                 </div>
 
                 <div class="row mb-2">
@@ -83,13 +83,40 @@
 
                 <!-- Botón -->
                 <div class="text-end mt-3">
-                    <button type="submit" class="btn btn-primary btn-sm">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="mostrarModalConfirmacion()">
                         <i class="fas fa-save"></i> Guardar Producto
                     </button>
                 </div>
             </form>
         </div>
     </div>
+</div>
+
+<!-- Modal de Confirmación -->
+<div class="modal fade" id="confirmarModal" tabindex="-1" aria-labelledby="confirmarModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title text-primary" id="confirmarModalLabel"><i class="fas fa-question-circle"></i> Confirmar acción</h6>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p>¿Está seguro de que desea guardar este producto?</p>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="imprimirEtiquetas" checked>
+          <label class="form-check-label" for="imprimirEtiquetas">
+            Imprimir etiquetas (cantidad: <span id="cantidadEtiquetaTexto">0</span>)
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="confirmarEnvio()">
+          Sí, guardar
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -131,5 +158,27 @@
     }
 
     iniciarCamara();
+
+    const form = document.querySelector('form');
+    const modal = new bootstrap.Modal(document.getElementById('confirmarModal'));
+    const cantidadInput = document.getElementById('cantidad');
+    const cantidadEtiquetaTexto = document.getElementById('cantidadEtiquetaTexto');
+
+    function mostrarModalConfirmacion() {
+        cantidadEtiquetaTexto.textContent = cantidadInput.value || '0';
+        modal.show();
+    }
+
+    function confirmarEnvio() {
+        const imprimir = document.getElementById('imprimirEtiquetas').checked;
+        const cantidad = parseInt(cantidadInput.value) || 0; 
+        const imprimirEtiqueta = document.getElementById('imprimir')
+
+        if(imprimir && cantidad>0){
+            imprimirEtiqueta.value='true'
+        }
+        modal.hide();
+        form.submit();
+    }
 </script>
 {% endblock %}

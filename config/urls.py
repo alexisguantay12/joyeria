@@ -23,6 +23,7 @@ urlpatterns = [
     path('',include('applications.core.urls')),
     path("productos/", include("applications.productos.urls")),
     path("usuarios/", include("applications.users.urls")),
+    path("ventas/", include("applications.ventas.urls")),
     
 ]
 if settings.DEBUG:

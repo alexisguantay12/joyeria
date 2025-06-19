@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-1">
+    <div class="card shadow-sm">
+        <div class="card-body p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-primary mb-0">
+                    <i class="fas fa-cash-register"></i> Nueva Venta
+                </h5>
+                <a href="{% url 'ventas_app:listado_ventas' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Cancelar
+                </a>
+            </div>
+
+            <p class="text-muted mb-3">Fecha: {{ fecha_actual }}</p>
+
+            <input type="text" id="scanner" class="form-control form-control-sm mb-3"
+                   placeholder="Escaneá el código del producto..." autofocus>
+
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-sm align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Producto</th>
+                            <th>Nombre</th>
+                            <th>Precio</th>
+                            <th>Cantidad</th>
+                            <th>Subtotal</th>
+                            <th class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detalle-venta"></tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="4" class="text-end">Total</th>
+                            <th colspan="2" id="total-venta">$0.00</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="text-end">
+                <button class="btn btn-success btn-sm" onclick="abrirConfirmacionVenta()">
+                    <i class="fas fa-check-circle"></i> Confirmar Venta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal producto -->
+<div class="modal fade" id="modalProducto" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title text-primary"><i class="fas fa-box"></i> Producto</h6>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="modal-img" src="" alt="Imagen" class="img-fluid rounded shadow-sm mb-3" style="max-height: 150px;">
+        <p>Código: <span id="modal-codigo"></span></p>
+        <p>Stock: <span id="modal-stock">0</span></p>
+        <p>Precio: $<span id="modal-precio">0.00</span></p>
+        <input type="number" id="modal-cantidad" class="form-control form-control-sm" placeholder="Cantidad">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary btn-sm" onclick="confirmarProducto()">
+            <i class="fas fa-plus-circle"></i> Agregar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal mensaje -->
+<div class="modal fade" id="modalMensaje" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-warning">
+      <div class="modal-header bg-warning-subtle">
+        <h6 class="modal-title text-warning"><i class="fas fa-exclamation-circle"></i> Aviso</h6>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p id="modalMensajeTexto" class="mb-0 text-dark"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Confirmar Venta -->
+<div class="modal fade" id="modalConfirmarVenta" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-success">
+      <div class="modal-header bg-success-subtle">
+        <h6 class="modal-title text-success"><i class="fas fa-check-circle"></i> Confirmar Venta</h6>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-dark">
+        ¿Estás seguro de que deseas confirmar esta venta?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-success btn-sm" onclick="confirmarVentaFinal()">
+          <i class="fas fa-check"></i> Sí, Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    let productoActual = null;
+    const productosVendidos = new Map();
+    const scanner = document.getElementById("scanner");
+
+    const modalElement = document.getElementById("modalProducto");
+    const modal = new bootstrap.Modal(modalElement);
+    const modalImg = document.getElementById("modal-img");
+    const modalStock = document.getElementById("modal-stock");
+    const modalPrecio = document.getElementById("modal-precio");
+    const modalCantidad = document.getElementById("modal-cantidad");
+    const modalMensajeTexto = document.getElementById("modalMensajeTexto");
+    const modalMensaje = new bootstrap.Modal(document.getElementById("modalMensaje"));
+    const modalConfirmarVenta = new bootstrap.Modal(document.getElementById("modalConfirmarVenta"));
+
+    scanner.addEventListener("change", function () {
+        const codigo = this.value.trim();
+        if (!codigo) return;
+
+        fetch(`/productos/buscar_producto_por_codigo/?codigo=${codigo}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const p = data.producto;
+                    productoActual = p;
+                    modalImg.src = p.foto;
+                    modalPrecio.textContent = parseFloat(p.precio).toFixed(2);
+                    modalCantidad.value = 1;
+
+                    if (productosVendidos.has(p.id)) {
+                        const pLocal = productosVendidos.get(p.id);
+                        modalStock.textContent = pLocal.stockDisponible;
+                    } else {
+                        modalStock.textContent = p.stock;
+                    }
+
+                    modal.show();
+                } else {
+                    mostrarMensaje("Producto no encontrado.");
+                }
+            })
+            .catch(() => mostrarMensaje("Error al buscar el producto."));
+
+        this.value = "";
+    });
+
+    function mostrarMensaje(texto) {
+        modalMensajeTexto.textContent = texto;
+        modalMensaje.show();
+    }
+
+    function confirmarProducto() {
+        const cantidad = parseInt(modalCantidad.value);
+        if (!cantidad || cantidad <= 0) {
+            alert("Cantidad no válida.");
+            return;
+        }
+
+        const stockDisponible = productosVendidos.has(productoActual.id)
+            ? productosVendidos.get(productoActual.id).stockDisponible
+            : productoActual.stock;
+
+        if (cantidad > stockDisponible) {
+            mostrarMensaje("Stock insuficiente.");
+            return;
+        }
+
+        if (productosVendidos.has(productoActual.id)) {
+            const fila = document.querySelector(`tr[data-producto-id='${productoActual.id}']`);
+            const tdCantidad = fila.querySelector(".cantidad");
+            const tdSubtotal = fila.querySelector(".subtotal");
+
+            let nuevaCantidad = parseInt(tdCantidad.textContent) + cantidad;
+            tdCantidad.textContent = nuevaCantidad;
+            tdSubtotal.textContent = "$" + (nuevaCantidad * productoActual.precio).toFixed(2);
+
+            productosVendidos.get(productoActual.id).stockDisponible -= cantidad;
+        } else {
+            agregarFila(productoActual, cantidad);
+            productosVendidos.set(productoActual.id, {
+                ...productoActual,
+                stockDisponible: productoActual.stock - cantidad
+            });
+        }
+
+        actualizarTotal();
+        modal.hide();
+    }
+
+    function agregarFila(producto, cantidad) {
+        const fila = document.createElement("tr");
+        fila.setAttribute("data-producto-id", producto.id);
+
+        fila.innerHTML = `
+            <td><img src="${producto.foto}" alt="Imagen" style="height: 60px;" class="rounded shadow-sm"></td>
+            <td>${producto.nombre}</td>
+            <td>$${parseFloat(producto.precio).toFixed(2)}</td>
+            <td class="cantidad">${cantidad}</td>
+            <td class="subtotal">$${(cantidad * producto.precio).toFixed(2)}</td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-danger" onclick="eliminarFila(this, ${producto.id}, ${cantidad})">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </td>
+        `;
+
+        document.getElementById("detalle-venta").appendChild(fila);
+    }
+
+    function eliminarFila(btn, productoId, cantidadEliminada) {
+        const fila = btn.closest("tr");
+        fila.remove();
+
+        if (productosVendidos.has(productoId)) {
+            const p = productosVendidos.get(productoId);
+            p.stockDisponible += parseInt(cantidadEliminada);
+
+            if (!document.querySelector(`tr[data-producto-id='${productoId}']`)) {
+                productosVendidos.delete(productoId);
+            }
+        }
+
+        actualizarTotal();
+    }
+
+    function actualizarTotal() {
+        let total = 0;
+        document.querySelectorAll("#detalle-venta .subtotal").forEach(td => {
+            total += parseFloat(td.textContent.replace("$", ""));
+        });
+        document.getElementById("total-venta").textContent = "$" + total.toFixed(2);
+    }
+
+    function abrirConfirmacionVenta() {
+        if (document.querySelectorAll("#detalle-venta tr").length === 0) {
+            alert("No hay productos para vender.");
+            return;
+        }
+        modalConfirmarVenta.show();
+    }
+
+    function confirmarVentaFinal() {
+        const productos = [];
+        document.querySelectorAll("#detalle-venta tr").forEach(tr => {
+            productos.push({
+                id: tr.getAttribute("data-producto-id"),
+                cantidad: tr.querySelector(".cantidad").textContent
+            });
+        });
+
+        fetch("/ventas/registrar-venta/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: JSON.stringify({ productos: productos })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = "{% url 'ventas_app:listado_ventas' %}";
+            } else {
+                alert(data.error || "Error al registrar la venta.");
+            }
+        })
+        .catch(err => {
+            alert("Error de red.");
+            console.error(err);
+        });
+    }
+</script>
+{% endblock %}

@@ -16,10 +16,10 @@
                     <table id="tabla-productos" class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr> 
+                                <th>Codigo</th>
                                 <th>Imagen</th>
                                 <th>Nombre</th>
                                 <th>Descripción</th>
-                                <th>Precio</th>
                                 <th>Categoría</th>
                                 <th>Acciones</th>
                             </tr>
@@ -27,6 +27,7 @@
                         <tbody>
                             {% for producto in productos %}
                             <tr class="clickable-row" data-url="{% url 'products_app:detalle_producto' producto.id %}" style="cursor:pointer;"> 
+                                <td>{{ producto.id }}</td>
                                 <td>
                                     {% if producto.imagen %}
                                         <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" class="img-thumbnail" style="width: 60px; height: 60px; object-fit: cover;">
@@ -36,7 +37,6 @@
                                 </td>
                                 <td>{{ producto.nombre }}</td>
                                 <td>{{ producto.descripcion|truncatechars:50 }}</td>
-                                <td>${{ producto.precio_venta }}</td>
                                 <td>{{ producto.categoria }}</td>
                                 <td class="sin-redireccion">
                                     <a href="#" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
@@ -103,7 +103,8 @@
                     previous: "Anterior"
                 }
             },
-            pageLength: 10
+            pageLength: 30,
+            order: [[1, 'desc']] 
         });
     });
 </script>

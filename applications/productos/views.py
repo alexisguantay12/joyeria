@@ -32,7 +32,7 @@ def no_es_vendedor(user):
 # ─────────────────────────────────────────────────────────────────────
 # PRODUCTO: Crear, listar, buscar, ver detalle
 # ─────────────────────────────────────────────────────────────────────
-
+from django.contrib.staticfiles import finders
 @login_required
 @user_passes_test(no_es_vendedor)
 def agregar_producto(request):
@@ -80,8 +80,9 @@ def agregar_producto(request):
                 new_height = img.height + 40
                 new_img = Image.new("RGB", (img.width, new_height), "white")
                 new_img.paste(img, (0, 0))
-
-                font = ImageFont.truetype("DejaVuSans.ttf", 30)
+ 
+                font_path = finders.find('fonts/DejaVuSans.ttf')
+                font = ImageFont.truetype(font_path, 30)
                 draw = ImageDraw.Draw(new_img)
 
                 char_spacing = 21
@@ -102,11 +103,20 @@ def agregar_producto(request):
                     cantidad = int(request.POST.get("cantidad", 0))
                 except ValueError:
                     cantidad = 0
-
+                print('CANTIDAD',cantidad)
                 local = Local.objects.get(id=1)
                 stock_obj, _ = StockLocal.objects.get_or_create(producto=producto, local=local)
                 stock_obj.cantidad += cantidad
                 stock_obj.save()
+
+                imprimir_etiquetas = request.POST.get('imprimir') == 'true'
+                print('IMPRIMIR',imprimir_etiquetas)
+                if imprimir_etiquetas and cantidad > 0:
+                    return render(request, 'imprimir_etiqueta.html', {
+                        'etiqueta_url': producto.codigo_barras.url,
+                        'cantidad': cantidad,
+                        'repeticiones': range(cantidad)  # 👈 creamos una lista de repeticiones
+                    })
 
             return redirect('products_app:productos')
     else:
@@ -115,6 +125,24 @@ def agregar_producto(request):
     return render(request, 'agregar_producto.html', {'form': form})
 
 
+@login_required
+@user_passes_test(no_es_vendedor)
+def imprimir_etiquetas(request, producto_id):
+    cantidad = int(request.GET.get("cantidad", 0))
+    producto = get_object_or_404(Producto, id=producto_id)
+
+    if cantidad > 0 and producto.codigo_barras:
+        return render(request, 'impresion_etiquetas.html', {
+            'etiqueta_url': producto.codigo_barras.url,
+            'cantidad': cantidad,
+            'repeticiones': range(cantidad),
+            'producto_id':producto.id
+        })
+
+    return redirect('products_app:detalle_producto', producto_id=producto.id)
+
+
+@login_required
 def lista_productos(request):
     es_admin = request.user.is_superuser or request.user.groups.filter(name="administrador").exists()
 
@@ -125,10 +153,13 @@ def lista_productos(request):
         productos_ids = StockLocal.objects.filter(local=local, cantidad__gt=0).values_list('producto_id', flat=True)
         productos = Producto.objects.filter(id__in=productos_ids)
 
+    productos = Producto.objects.all().order_by('-id')  # El ID más alto primero
+    
     return render(request, 'productos.html', {'productos': productos})
 
 
 @login_required
+
 def buscar_producto_por_codigo(request):
     codigo = request.GET.get("codigo")
     try:
@@ -139,16 +170,17 @@ def buscar_producto_por_codigo(request):
             "foto": producto.imagen.url if producto.imagen else "",
             "id": producto.id,
             "stock": stock.cantidad,
+            "precio": producto.precio_venta
         }
         return JsonResponse({"success": True, "producto": data})
     except Producto.DoesNotExist:
         return JsonResponse({"success": False, "error": "Producto no encontrado"})
-
+ 
 
 @login_required
 def detalle_producto(request, producto_id):
     producto = get_object_or_404(Producto, id=producto_id)
-    es_admin = request.user.groups.filter(name="administrador").exists()
+    es_admin =request.user.is_superuser or request.user.groups.filter(name="administrador").exists()
     
     if es_admin:
         stock_por_local = StockLocal.objects.filter(producto=producto).select_related('local')
@@ -175,6 +207,7 @@ def imprimir_codigo(request, producto_id):
 # ─────────────────────────────────────────────────────────────────────
 
 @login_required
+@user_passes_test(no_es_vendedor)
 def ingreso_mercaderia(request):
     local_id = request.GET.get("local_id") or 1
     fecha_actual = timezone.now().strftime("%d/%m/%Y")
@@ -186,6 +219,7 @@ def ingreso_mercaderia(request):
 
 @login_required
 @csrf_exempt
+@user_passes_test(no_es_vendedor)
 def registrar_ingreso(request):
     if request.method == 'POST':
         try:
@@ -198,7 +232,7 @@ def registrar_ingreso(request):
                 lote = IngresoLote.objects.create(local=local, fecha=timezone.now(),user_made=request.user)
 
                 for item in productos:
-                    producto = Producto.objects.get(id=item["producto_id"])
+                    producto = Producto.objects.get(id=item["id"])
                     cantidad = int(item["cantidad"])
 
                     MovimientoStock.objects.create(
@@ -208,13 +242,14 @@ def registrar_ingreso(request):
                         lote=lote,
                         user_made = request.user
                     )
-
+                    
                     stock_central = StockLocal.objects.get(producto=producto, local=central)
-                    stock_central.cantidad -= cantidad
+                    stock_central.cantidad -= cantidad 
+                    print('Estoy aca stock central',stock_central.cantidad)
                     stock_central.save()
-
                     stock_local, _ = StockLocal.objects.get_or_create(producto=producto, local=local)
                     stock_local.cantidad += cantidad
+                    print('Estoy aca stock local',stock_central.cantidad)
                     stock_local.save()
 
             return JsonResponse({"success": True})
@@ -230,12 +265,14 @@ def registrar_ingreso(request):
 # ─────────────────────────────────────────────────────────────────────
 
 @login_required
+@user_passes_test(no_es_vendedor)
 def lista_ingresos(request):
     ingresos = IngresoLote.objects.all().order_by('-fecha')
     return render(request, 'ingresos.html', {'ingresos': ingresos})
 
 
 @login_required
+@user_passes_test(no_es_vendedor)
 def detalle_ingreso(request, ingreso_id):
     ingreso = get_object_or_404(IngresoLote, id=ingreso_id)
     productos = ingreso.movimientos.all()

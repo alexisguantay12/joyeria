@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="px-3 px-md-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="text-primary"><i class="fas fa-cash-register"></i> Ventas Realizadas</h3>
+        <a href="{% url 'ventas_app:agregar_venta' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Nueva Venta
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if ventas %}
+                <div class="table-responsive">
+                    <table id="tabla-ventas" class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID Venta</th>
+                                <th>Usuario</th>
+                                <th>Fecha</th>
+                                <th>Local</th>
+                                <th>Total</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for venta in ventas %}
+                            <tr id="venta-{{ venta.id }}" class="clickable-row" data-url="{% url 'ventas_app:detalle_venta' venta.id %}">
+                                <td>{{ venta.id }}</td>
+                                <td>{{ venta.usuario.username }}</td>
+                                <td>{{ venta.fecha|date:"d/m/Y H:i" }}</td>
+                                <td>{{ venta.local.nombre }}</td>
+                                <td>${{ venta.total }}</td>
+                                <td class="acciones"> 
+                                    <button class="btn btn-sm btn-danger" onclick="confirmarEliminar({{ venta.id }})">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">No hay ventas registradas.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmación Eliminar -->
+<div class="modal fade" id="modalEliminar" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-danger">
+      <div class="modal-header bg-danger-subtle">
+        <h6 class="modal-title text-danger"><i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación</h6>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">¿Estás seguro de que querés eliminar esta venta?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-danger btn-sm" id="btnConfirmarEliminar">
+            <i class="fas fa-trash"></i> Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FontAwesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<script>
+    let idVentaAEliminar = null;
+    const modalEliminar = new bootstrap.Modal(document.getElementById('modalEliminar'));
+
+    function confirmarEliminar(id) {
+        idVentaAEliminar = id;
+        modalEliminar.show();
+    }
+
+    document.getElementById("btnConfirmarEliminar").addEventListener("click", function () {
+        if (!idVentaAEliminar) return;
+
+        fetch(`/ventas/eliminar/${idVentaAEliminar}/`, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}"
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById(`venta-${idVentaAEliminar}`).remove();
+                modalEliminar.hide();
+            } else {
+                alert(data.error || "Error al eliminar la venta.");
+            }
+        })
+        .catch(() => alert("Error de red al intentar eliminar."));
+    });
+
+    $(document).ready(function () {
+        $('#tabla-ventas').DataTable({
+            language: {
+                lengthMenu: "Mostrar _MENU_ registros",
+                zeroRecords: "No se encontraron resultados",
+                info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                infoEmpty: "Mostrando 0 a 0 de 0 registros",
+                infoFiltered: "(filtrado de _MAX_ registros totales)",
+                search: "Buscar:",
+                paginate: {
+                    first: "Primero",
+                    last: "Último",
+                    next: "Siguiente",
+                    previous: "Anterior"
+                }
+            },
+            pageLength: 5
+        });
+
+        // Activar redirección al detalle al hacer clic en la fila (excepto en botones)
+        document.querySelectorAll(".clickable-row").forEach(row => {
+            row.addEventListener("click", function (e) {
+                if (!e.target.closest(".acciones")) {
+                    window.location.href = this.dataset.url;
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

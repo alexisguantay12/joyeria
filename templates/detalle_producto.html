@@ -41,6 +41,12 @@
                 <a href="#" class="btn btn-info ms-2" data-bs-toggle="modal" data-bs-target="#modalStock">
                     <i class="fas fa-warehouse"></i> Ver Stock
                 </a>
+                <!-- Botón para imprimir etiquetas -->
+                <!-- Botón para imprimir etiquetas -->
+                <button class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#modalImprimir">
+                  <i class="fas fa-print"></i> Imprimir Etiquetas
+                </button>
+
             </div>
         </div>
     </div>
@@ -90,6 +96,31 @@
           <i class="fas fa-times"></i> Cerrar
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal para imprimir etiquetas -->
+<div class="modal fade" id="modalImprimir" tabindex="-1" aria-labelledby="modalImprimirLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="GET" action="{% url 'products_app:imprimir_etiquetas' producto.id %}">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="modalImprimirLabel"><i class="fas fa-tags"></i> Imprimir Etiquetas</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="cantidad" class="form-label">Cantidad de etiquetas a imprimir:</label>
+            <input type="number" name="cantidad" id="cantidad" value ="1" class="form-control" min="1" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Aceptar</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
