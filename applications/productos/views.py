@@ -10,7 +10,7 @@ from django.db import transaction
 from .forms import ProductoForm
 from .models import (
     Producto, StockLocal, Local,
-    MovimientoStock, IngresoLote
+    MovimientoStock, IngresoLote,ImagenProducto
 )
 
 import os
@@ -42,17 +42,30 @@ def agregar_producto(request):
         if form.is_valid():
             with transaction.atomic():
                 producto = form.save(commit=False)
-
-                # Procesar imagen desde webcam (base64)
-                webcam_data = request.POST.get('webcam_image')
-                if webcam_data:
-                    format, imgstr = webcam_data.split(';base64,')
-                    ext = format.split('/')[-1]
-                    filename = f"{uuid.uuid4()}.{ext}"
-                    data = ContentFile(base64.b64decode(imgstr), name=filename)
-                    producto.imagen = data
-
+                
                 producto.save()
+
+                # Procesar imágenes desde la cámara (base64)
+                webcam_images_data = request.POST.get('webcam_images')
+                print('Muestra', webcam_images_data)
+                if webcam_images_data:
+                    try:
+                        # Decodificar las imágenes base64
+                        print('Muestra', webcam_images_data) 
+                        webcam_images = json.loads(webcam_images_data)
+                        for img_data in webcam_images:
+                            format, imgstr = img_data.split(';base64,')
+                            ext = format.split('/')[-1]
+                            filename = f"{uuid.uuid4()}.{ext}"
+                            data = ContentFile(base64.b64decode(imgstr), name=filename)
+
+                            # Crear una instancia de ImagenProducto y asociarla al producto
+                            imagen_producto = ImagenProducto(producto=producto, imagen=data)
+                            imagen_producto.save()
+
+                    except Exception as e:
+                        print(f"Error al procesar las imágenes: {e}")
+
 
                 # Crear código de barras
                 barcode_dir = os.path.join(settings.MEDIA_ROOT, 'barcodes')
@@ -125,6 +138,32 @@ def agregar_producto(request):
     return render(request, 'agregar_producto.html', {'form': form})
 
 
+@csrf_exempt
+@login_required
+def eliminar_producto_api(request, id):
+    """
+    Elimina lógicamente una venta y sus detalles (soft delete),
+    devolviendo el stock al local correspondiente.
+    """
+    if request.method == "POST":
+        try:
+            with transaction.atomic():
+                producto = Producto.objects.get(id=id)
+                producto.user_deleted = request.user
+                producto.delete()  # Soft delete
+                # Devolver stock y eliminar detalles 
+
+                return JsonResponse({"success": True})
+        except Venta.DoesNotExist:
+            return JsonResponse({"success": False, "error": "Venta no encontrada"})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)})
+
+    return JsonResponse({"success": False, "error": "Método no permitido"}, status=405)
+
+
+
+
 @login_required
 @user_passes_test(no_es_vendedor)
 def imprimir_etiquetas(request, producto_id):
@@ -143,15 +182,8 @@ def imprimir_etiquetas(request, producto_id):
 
 
 @login_required
+@user_passes_test(no_es_vendedor)
 def lista_productos(request):
-    es_admin = request.user.is_superuser or request.user.groups.filter(name="administrador").exists()
-
-    if es_admin:
-        productos = Producto.objects.all()
-    else:
-        local = request.user.local
-        productos_ids = StockLocal.objects.filter(local=local, cantidad__gt=0).values_list('producto_id', flat=True)
-        productos = Producto.objects.filter(id__in=productos_ids)
 
     productos = Producto.objects.all().order_by('-id')  # El ID más alto primero
     
@@ -159,28 +191,68 @@ def lista_productos(request):
 
 
 @login_required
-
-def buscar_producto_por_codigo(request):
+def buscar_producto_por_codigo_venta(request):
     codigo = request.GET.get("codigo")
     try:
-        producto = Producto.objects.get(id=codigo)
-        stock = StockLocal.objects.get(producto=producto, local_id=1)
+        producto = Producto.objects.get(id=codigo) 
+        # Intentamos obtener el stock
+        try:
+            stock = StockLocal.objects.get(producto=producto, local=request.user.local)
+            cantidad_stock = stock.cantidad
+        except StockLocal.DoesNotExist:
+            cantidad_stock = 0
+        fotos = [img.imagen.url for img in producto.imagenes.all()]
+        foto_principal = fotos[0] if fotos else ""
         data = {
             "nombre": producto.nombre,
-            "foto": producto.imagen.url if producto.imagen else "",
+            "foto": foto_principal,
             "id": producto.id,
-            "stock": stock.cantidad,
+            "stock": cantidad_stock,
             "precio": producto.precio_venta
         }
         return JsonResponse({"success": True, "producto": data})
     except Producto.DoesNotExist:
         return JsonResponse({"success": False, "error": "Producto no encontrado"})
  
+@login_required
+
+def buscar_producto_por_codigo(request):
+    codigo = request.GET.get("codigo")
+    local_id= request.GET.get("local_id")
+    try:
+        producto = Producto.objects.get(id=codigo)
+
+        # Si local_id es "0" o "" asumimos que es Central (puedes adaptar la lógica)
+        if not local_id or local_id in ["0", ""]:
+            local = Local.objects.get(nombre="Central")  # O usa tu lógica para obtener Central
+        else:
+            local = Local.objects.get(id=local_id)
+
+        # Intentamos obtener el stock
+        try:
+            stock = StockLocal.objects.get(producto=producto, local=local)
+            cantidad_stock = stock.cantidad
+        except StockLocal.DoesNotExist:
+            cantidad_stock = 0
+        fotos = [img.imagen.url for img in producto.imagenes.all()]
+        foto_principal = fotos[0] if fotos else ""
+        data = {
+            "nombre": producto.nombre,
+            "foto": foto_principal,
+            "id": producto.id,
+            "stock": cantidad_stock,
+            "precio": producto.precio_venta
+        }
+        return JsonResponse({"success": True, "producto": data})
+    except Producto.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Producto no encontrado"})
+ 
+from applications.ventas.models import DetalleVenta  # Asegurate de importar el modelo
 
 @login_required
 def detalle_producto(request, producto_id):
     producto = get_object_or_404(Producto, id=producto_id)
-    es_admin =request.user.is_superuser or request.user.groups.filter(name="administrador").exists()
+    es_admin = request.user.is_superuser or request.user.groups.filter(name="administrador").exists()
     
     if es_admin:
         stock_por_local = StockLocal.objects.filter(producto=producto).select_related('local')
@@ -189,12 +261,15 @@ def detalle_producto(request, producto_id):
 
     total_stock = sum(s.cantidad for s in stock_por_local)
 
+    # Obtener ventas relacionadas a este producto
+    ventas = DetalleVenta.objects.filter(producto=producto).select_related('venta__local', 'venta__user_made').order_by('-venta__fecha')
+
     return render(request, 'detalle_producto.html', {
         'producto': producto,
         'stock_por_local': stock_por_local,
         'total_stock': total_stock,
+        'ventas': ventas,  # nuevo contexto para el modal
     })
-
 
 @login_required
 def imprimir_codigo(request, producto_id):
@@ -211,56 +286,85 @@ def imprimir_codigo(request, producto_id):
 def ingreso_mercaderia(request):
     local_id = request.GET.get("local_id") or 1
     fecha_actual = timezone.now().strftime("%d/%m/%Y")
+    locales = Local.objects.exclude(nombre="Central")
     return render(request, 'ingreso_mercaderia.html', {
         'fecha_actual': fecha_actual,
         'local_id': local_id,
+        'locales':locales
     })
 
 
 @login_required
 @csrf_exempt
-@user_passes_test(no_es_vendedor)
+@user_passes_test(no_es_vendedor)  # Asegúrate de que esta func existe
 def registrar_ingreso(request):
-    if request.method == 'POST':
+    """Registrar una transferencia de productos entre Central y un Local involucrado."""
+    if request.method != 'POST':
+        return JsonResponse({"success": False, "error": "Método no permitido"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        productos = data.get("productos", [])
+        local_id = data.get("local_id")
+        tipo = data.get("tipo")
+
+        if not local_id or not tipo:
+            return JsonResponse({"success": False, "error": "Faltan datos requeridos (local_id, tipo)."}, status=400)
+
+        # Verificación de existencia de locales
         try:
-            data = json.loads(request.body)
-            productos = data.get("productos", [])
-            local = request.user.local 
-            central = Local.objects.get(id=1)
+            local_involucrado = Local.objects.get(id=local_id)
+            central = Local.objects.get(nombre="Central")
+        except Local.DoesNotExist:
+            return JsonResponse({"success": False, "error": "Local no encontrado."}, status=404)
 
-            with transaction.atomic():
-                lote = IngresoLote.objects.create(local=local, fecha=timezone.now(),user_made=request.user)
+        # Crear el lote de ingreso
+        with transaction.atomic():
+            lote = IngresoLote.objects.create(local=local_involucrado, tipo=tipo, fecha=timezone.now(), user_made=request.user)
 
-                for item in productos:
-                    producto = Producto.objects.get(id=item["id"])
-                    cantidad = int(item["cantidad"])
+            for item in productos:
+                producto_id = item.get("id")
+                cantidad = int(item.get("cantidad", 0))
+                if cantidad <= 0:
+                    return JsonResponse({"success": False, "error": f"Cantidad no válida para producto ID {producto_id}."}, status=400)
 
-                    MovimientoStock.objects.create(
-                        producto=producto,
-                        cantidad=cantidad,
-                        tipo='ingreso',
-                        lote=lote,
-                        user_made = request.user
-                    )
-                    
-                    stock_central = StockLocal.objects.get(producto=producto, local=central)
-                    stock_central.cantidad -= cantidad 
-                    print('Estoy aca stock central',stock_central.cantidad)
-                    stock_central.save()
-                    stock_local, _ = StockLocal.objects.get_or_create(producto=producto, local=local)
-                    stock_local.cantidad += cantidad
-                    print('Estoy aca stock local',stock_central.cantidad)
-                    stock_local.save()
+                producto = Producto.objects.filter(id=producto_id).first()
+                if not producto:
+                    return JsonResponse({"success": False, "error": f"Producto ID {producto_id} no encontrado."}, status=404)
 
-            return JsonResponse({"success": True})
+                # Definir local de origen y destino según el tipo de operación
+                if tipo == "entrada":
+                    origen = central
+                    destino = local_involucrado
+                else:
+                    origen = local_involucrado
+                    destino = central
 
-        except Exception as e:
-            return JsonResponse({"success": False, "error": str(e)})
+                # Verificación de stock en el local de origen
+                stock_origen, _ = StockLocal.objects.get_or_create(producto=producto, local=origen, defaults={'cantidad': 0})
+                if stock_origen.cantidad < cantidad:
+                    return JsonResponse({"success": False, "error": f"No hay suficiente stock de {producto.nombre} en el local {origen.nombre}. Stock actual: {stock_origen.cantidad}"}, status=400)
 
-    return JsonResponse({"success": False, "error": "Método no permitido"})
+                # Crear movimiento de stock
+                MovimientoStock.objects.create(
+                    producto=producto,
+                    cantidad=cantidad,
+                    lote=lote,
+                    user_made=request.user
+                )
+                # Actualizar stock origen
+                stock_origen.cantidad -= cantidad
+                stock_origen.save()
 
+                # Actualizar stock destino
+                stock_destino, _ = StockLocal.objects.get_or_create(producto=producto, local=destino, defaults={'cantidad': 0})
+                stock_destino.cantidad += cantidad
+                stock_destino.save()
 
-# ─────────────────────────────────────────────────────────────────────
+        return JsonResponse({"success": True}, status=200)
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
 # CONSULTAS DE INGRESOS
 # ─────────────────────────────────────────────────────────────────────
 
@@ -281,3 +385,75 @@ def detalle_ingreso(request, ingreso_id):
         'ingreso': ingreso,
         'productos': productos,
     })
+
+
+from django.shortcuts import redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, user_passes_test
+from .models import IngresoLote
+from datetime import timedelta
+from django.utils import timezone
+
+@login_required
+@user_passes_test(no_es_vendedor)
+def eliminar_ingreso(request, ingreso_id):
+    """Elimina un IngresoLote y revierte los cambios de stock, si no pasaron 30 minutos."""
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Método no permitido."}, status=405)
+
+    lote = get_object_or_404(IngresoLote, id=ingreso_id)
+
+    # ✅ Verificar si pasaron más de 30 minutos
+    tiempo_limite = lote.fecha + timedelta(minutes=0)
+    if timezone.now() > tiempo_limite:
+        return JsonResponse({
+            "success": False,
+            "error": "Eliminacion restringida debido a que paso mas de 30 minutos de su creacion ."
+        }, status=403)
+
+    try:
+        central = Local.objects.get(nombre="Central")
+    except Local.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Local 'Central' no encontrado."}, status=404)
+
+    try:
+        with transaction.atomic():
+            movimientos = MovimientoStock.objects.filter(lote=lote)
+
+            for movimiento in movimientos:
+                producto = movimiento.producto
+                cantidad = movimiento.cantidad
+                local_involucrado = lote.local
+
+                if lote.tipo == "entrada":
+                    stock_local_involucrado = StockLocal.objects.get(producto=producto, local=local_involucrado)
+                    stock_central = StockLocal.objects.get(producto=producto, local=central)
+
+                    if stock_local_involucrado.cantidad < cantidad:
+                        raise ValueError(f"No hay suficiente stock en {local_involucrado.nombre} para revertir producto {producto.nombre}")
+
+                    stock_local_involucrado.cantidad -= cantidad
+                    stock_local_involucrado.save()
+
+                    stock_central.cantidad += cantidad
+                    stock_central.save()
+
+                else:
+                    stock_central = StockLocal.objects.get(producto=producto, local=central)
+                    stock_local_involucrado = StockLocal.objects.get(producto=producto, local=local_involucrado)
+
+                    if stock_central.cantidad < cantidad:
+                        raise ValueError(f"No hay suficiente stock en Central para revertir producto {producto.nombre}")
+
+                    stock_central.cantidad -= cantidad
+                    stock_central.save()
+
+                    stock_local_involucrado.cantidad += cantidad
+                    stock_local_involucrado.save()
+
+            movimientos.delete()
+            lote.delete()
+
+            return JsonResponse({"success": True, "message": f"Ingreso {lote.id} eliminado y stock revertido correctamente."})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": f"No se pudo eliminar el ingreso. Error: {str(e)}"}, status=500)

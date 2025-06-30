@@ -8,8 +8,26 @@
         </div>
         <div class="card-body row">
             <div class="col-md-4 text-center mb-3">
-                {% if producto.imagen %}
-                    <img src="{{ producto.imagen.url }}" class="img-fluid rounded shadow-sm" alt="{{ producto.nombre }}" style="max-height: 250px; object-fit: contain;">
+                {% if producto.imagenes.all %}
+                    <div id="productoCarousel" class="carousel slide" data-bs-ride="carousel">
+                        <div class="carousel-inner">
+                            {% for imagen in producto.imagenes.all %}
+                                <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                    <img src="{{ imagen.imagen.url }}" class="d-block w-100 rounded shadow-sm" alt="{{ producto.nombre }}" style="max-height: 250px; object-fit: contain;">
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if producto.imagenes.count > 1 %}
+                        <button class="carousel-control-prev" type="button" data-bs-target="#productoCarousel" data-bs-slide="prev">
+                          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                          <span class="visually-hidden">Anterior</span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#productoCarousel" data-bs-slide="next">
+                          <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                          <span class="visually-hidden">Siguiente</span>
+                        </button>
+                        {% endif %}
+                    </div>
                 {% else %}
                     <div class="border p-5 text-muted">Sin imagen</div>
                 {% endif %}
@@ -19,34 +37,30 @@
                 <p class="text-muted">{{ producto.descripcion|default:"Sin descripción" }}</p>
 
                 <ul class="list-group list-group-flush mb-3">
-                    <li class="list-group-item">
-                        <strong>Precio de Venta:</strong> ${{ producto.precio_venta }}
-                    </li>
-                    <li class="list-group-item">
-                        <strong>Categoría:</strong> {{ producto.categoria }}
-                    </li>
+                    <li class="list-group-item"><strong>Precio de Venta:</strong> ${{ producto.precio_venta }} &nbsp;&nbsp; <strong>Gramos:</strong> {{ producto.gramos }}</li>
+                    <li class="list-group-item"><strong>Categoría:</strong> {{ producto.categoria }}</li> 
                     {% if producto.codigo_barras %}
-                    <li class="list-group-item">
-                        <strong>Código de Barras:</strong><br>
-                        <img src="{{ producto.codigo_barras.url }}" alt="Código de barras" class="mt-2" style="max-width: 250px;">
-                    </li>
+                        <li class="list-group-item">
+                            <strong>Código de Barras:</strong><br>
+                            <img src="{{ producto.codigo_barras.url }}" alt="Código de barras" class="mt-2" style="max-width: 250px;">
+                        </li>
                     {% endif %}
                 </ul>
 
-                <a href="{% url 'products_app:productos' %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Volver a la lista
-                </a>
-
-                <!-- Botón para ver el stock -->
-                <a href="#" class="btn btn-info ms-2" data-bs-toggle="modal" data-bs-target="#modalStock">
-                    <i class="fas fa-warehouse"></i> Ver Stock
-                </a>
-                <!-- Botón para imprimir etiquetas -->
-                <!-- Botón para imprimir etiquetas -->
-                <button class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#modalImprimir">
-                  <i class="fas fa-print"></i> Imprimir Etiquetas
-                </button>
-
+                <div class="d-flex flex-wrap gap-2">                   
+                    <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#modalVentas">
+                        <i class="fas fa-list"></i> Ver Ventas
+                    </button>
+                    <a href="#" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#modalStock">
+                        <i class="fas fa-warehouse"></i> Ver Stock
+                    </a>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalImprimir">
+                        <i class="fas fa-print"></i> Imprimir Etiquetas
+                    </button>
+                    <a href="{% url 'products_app:productos' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver a la lista
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -54,80 +68,107 @@
 
 <!-- Modal de Stock -->
 <div class="modal fade" id="modalStock" tabindex="-1" aria-labelledby="modalStockLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-info text-white">
-        <h5 class="modal-title" id="modalStockLabel"><i class="fas fa-boxes"></i> Stock del Producto</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body">
-        {% if stock_por_local %}
-        <table class="table table-bordered table-hover">
-          <thead class="table-light">
-            <tr>
-              <th>Joyería</th>
-              <th class="text-end">Cantidad</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% with total=0 %}
-            {% for stock in stock_por_local %}
-            <tr>
-              <td>{{ stock.local.nombre }}</td>
-              <td class="text-end">{{ stock.cantidad }}</td>
-              {% widthratio stock.cantidad 1 1 as sum %}
-              {% with total=total|add:sum %}
-              {% endwith %}
-            </tr>
-            {% endfor %}
-            <tr class="table-secondary">
-              <td><strong>Total General</strong></td>
-              <td class="text-end"><strong>{{ total_stock }}</strong></td>
-            </tr>
-            {% endwith %}
-          </tbody>
-        </table>
-        {% else %}
-        <p class="text-muted">Este producto no tiene stock registrado aún.</p>
-        {% endif %}
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          <i class="fas fa-times"></i> Cerrar
-        </button>
-      </div>
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalStockLabel"><i class="fas fa-boxes"></i> Stock del Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                {% if stock_por_local %}
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr><th>Joyería</th><th class="text-end">Cantidad</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for stock in stock_por_local %}
+                            <tr>
+                                <td>{{ stock.local.nombre }}</td>
+                                <td class="text-end">{{ stock.cantidad }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="table-secondary">
+                                <td><strong>Total General</strong></td>
+                                <td class="text-end"><strong>{{ total_stock }}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="text-muted">Este producto no tiene stock registrado aún.</p>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times"></i> Cerrar</button>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
-
-<!-- Modal para imprimir etiquetas -->
+<!-- Modal para Imprimir Etiquetas -->
 <div class="modal fade" id="modalImprimir" tabindex="-1" aria-labelledby="modalImprimirLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <form method="GET" action="{% url 'products_app:imprimir_etiquetas' producto.id %}">
-        <div class="modal-header bg-success text-white">
-          <h5 class="modal-title" id="modalImprimirLabel"><i class="fas fa-tags"></i> Imprimir Etiquetas</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="GET" action="{% url 'products_app:imprimir_etiquetas' producto.id %}">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="modalImprimirLabel"><i class="fas fa-tags"></i> Imprimir Etiquetas</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="cantidad" class="form-label">Cantidad de etiquetas a imprimir:</label>
+                        <input type="number" name="cantidad" id="cantidad" value="1" class="form-control" min="1" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-success"><i class="fas fa-check"></i> Aceptar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times"></i> Cancelar</button>
+                </div>
+            </form>
         </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="cantidad" class="form-label">Cantidad de etiquetas a imprimir:</label>
-            <input type="number" name="cantidad" id="cantidad" value ="1" class="form-control" min="1" required>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Aceptar</button>
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times"></i> Cancelar</button>
-        </div>
-      </form>
     </div>
-  </div>
 </div>
 
-<!-- FontAwesome para íconos -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Modal de Ventas del Producto -->
+<div class="modal fade" id="modalVentas" tabindex="-1" aria-labelledby="modalVentasLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-dark">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalVentasLabel"><i class="fas fa-receipt"></i> Ventas del Producto</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                {% if ventas %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Usuario</th>
+                                <th>Local</th>
+                                <th class="text-end">Cantidad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for detalle in ventas %}
+                            <tr>
+                                <td>{{ detalle.venta.fecha|date:"d/m/Y H:i" }}</td>
+                                <td>{{ detalle.venta.user_made.username }}</td>
+                                <td>{{ detalle.venta.local.nombre }}</td>
+                                <td class="text-end">{{ detalle.cantidad }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">Este producto aún no fue vendido.</p>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times"></i> Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-<!-- Bootstrap JS para el modal -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 {% endblock %}

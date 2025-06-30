@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="carrusel-container">
+    <img id="carrusel-imagen" src="{% static 'fotos/alto-noa.jpg' %}" alt="Carrusel">
+</div>
+
+<script>
+    const imagenes = [
+        "{% static 'fotos/alto-noa.jpg' %}",
+        "{% static 'fotos/altonoa2.jpg' %}",
+        "{% static 'fotos/elpunto.webp' %}",
+        "{% static 'fotos/elpunto2.webp' %}"
+    ];
+    let indice = 0;
+
+    const carrusel = document.getElementById("carrusel-imagen");
+
+    setInterval(() => {
+        indice = (indice + 1) % imagenes.length;
+
+        // Añadir la clase para desvanecimiento
+        carrusel.classList.add("fade-out");
+
+        // Cambiar la imagen después de que la opacidad llega a 0
+        setTimeout(() => {
+            carrusel.setAttribute("src", imagenes[indice]);
+            carrusel.classList.remove("fade-out");
+        }, 1000);
+    }, 5000);
+</script>
+
+<style>
+    .carrusel-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+        overflow: hidden;
+    }
+
+    .carrusel-container img {
+        width: 100vw;
+        height: 100vh;
+        object-fit: cover;
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 1;
+        transition: opacity 1s ease-in-out;
+    }
+
+    .carrusel-container img.fade-out {
+        opacity: 0;
+    }
+</style>
+{% endblock %}

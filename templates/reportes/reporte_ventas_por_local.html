@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i> Reporte de Ventas por Local</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label for="fecha_desde" class="form-label">Desde</label>
+                    <input type="date" id="fecha_desde" name="fecha_desde" value="{{ fecha_desde }}" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label for="fecha_hasta" class="form-label">Hasta</label>
+                    <input type="date" id="fecha_hasta" name="fecha_hasta" value="{{ fecha_hasta }}" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label for="local" class="form-label">Local</label>
+                    <select name="local" id="local" class="form-select">
+                        <option value="">Todos los locales</option>
+                        {% for loc in locales %}
+                            <option value="{{ loc.id }}" {% if local_id == loc.id|stringformat:"s" %}selected{% endif %}>{{ loc.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-grid align-items-end">
+                    <button class="btn btn-primary"><i class="fas fa-search"></i> Generar</button>
+                </div>
+            </form>
+
+            {% if resultados %}
+                <div class="d-flex justify-content-end mb-2">
+                    <a href="?{% if fecha_desde %}fecha_desde={{ fecha_desde }}&{% endif %}{% if fecha_hasta %}fecha_hasta={{ fecha_hasta }}&{% endif %}{% if local_id %}local={{ local_id }}&{% endif %}export=excel"
+                       class="btn btn-success btn-sm">
+                        <i class="fas fa-file-excel"></i> Descargar Excel
+                    </a>
+                </div>
+
+                <div style="max-height: 350px; overflow-y: auto;">
+                    <table class="table table-bordered table-sm small align-middle">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Precio Unitario</th>
+                                <th>Cantidad</th>
+                                <th>Subtotal</th>
+                                <th>Fecha</th>
+                                <th>Usuario</th>
+                                <th>Local</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in resultados %}
+                            <tr>
+                                <td>{{ r.producto.nombre }}</td>
+                                <td>${{ r.precio_unitario }}</td>
+                                <td>{{ r.cantidad }}</td>
+                                <td>${{ r.subtotal_calculado }}</td>
+                                <td>{{ r.venta.fecha|date:"d/m/Y H:i" }}</td>
+                                <td>{{ r.user_made.username }}</td>
+                                <td>{{ r.venta.local.nombre }}</td>
+                            </tr>
+                            {% endfor %} 
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Total siempre visible -->
+                <div class="mt-2 d-flex justify-content-end">
+                    <div class="px-4 py-2 rounded text-white" style="background-color: #343a40;">
+                        <strong>Total:</strong> ${{ total }}
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-warning mt-3">
+                    No hay resultados para los filtros seleccionados.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

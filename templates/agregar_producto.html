@@ -5,9 +5,7 @@
     <div class="card shadow-sm">
         <div class="card-body p-3">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="text-primary mb-0">
-                    <i class="fas fa-plus-circle"></i> Agregar Producto
-                </h5>
+                <h5 class="text-primary mb-0"><i class="fas fa-plus-circle"></i> Agregar Producto</h5>
                 <a href="{% url 'products_app:productos' %}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-arrow-left"></i> Cancelar
                 </a>
@@ -16,6 +14,8 @@
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <input type="hidden" name="imprimir" id="imprimir" value="false">
+                <input type="hidden" name="webcam_images" id="webcam_images">
+
                 <div class="row mb-2">
                     <div class="col-md-4">
                         <label class="form-label mb-1">Nombre</label>
@@ -28,10 +28,16 @@
                                id="{{ form.precio_venta.id_for_label }}" class="form-control form-control-sm"
                                value="{{ form.precio_venta.value|default_if_none:'' }}">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
                         <label class="form-label mb-1">Cantidad</label>
                         <input type="number" step="1" name="cantidad" id="cantidad"
-                               class="form-control form-control-sm" value="0">
+                               class="form-control form-control-sm" value="1">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label mb-1">Gramos</label>
+                        <input type="number" step="1" name="{{ form.gramos.name }}"
+                               id="{{ form.gramos.id_for_label }}" class="form-control form-control-sm"
+                               value="1">
                     </div>
                 </div>
 
@@ -60,6 +66,11 @@
                     </div>
                 </div>
 
+                <div class="mb-2">
+                    <label class="form-label mb-1">Fotos adicionales</label>
+                    <input type="file" name="fotos_adicionales" multiple class="form-control form-control-sm">
+                </div>
+
                 <!-- Cámara -->
                 <div class="row g-2 align-items-center mt-3">
                     <div class="col-md-6">
@@ -78,10 +89,14 @@
                             <i class="fas fa-sync-alt"></i> Tomar otra foto
                         </button>
                     </div>
-                    <input type="hidden" name="webcam_image" id="webcam_image">
+                    <div id="capturadas" class="mt-2">
+                        <h6>Fotos Capturadas:</h6>
+                        <div id="fotos-lista" class="d-flex flex-wrap gap-2">
+                            <!-- Las imágenes capturadas se añadirán aquí -->
+                        </div>
+                    </div> 
                 </div>
 
-                <!-- Botón -->
                 <div class="text-end mt-3">
                     <button type="button" class="btn btn-primary btn-sm" onclick="mostrarModalConfirmacion()">
                         <i class="fas fa-save"></i> Guardar Producto
@@ -103,28 +118,49 @@
       <div class="modal-body">
         <p>¿Está seguro de que desea guardar este producto?</p>
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="imprimirEtiquetas" checked>
-          <label class="form-check-label" for="imprimirEtiquetas">
-            Imprimir etiquetas (cantidad: <span id="cantidadEtiquetaTexto">0</span>)
-          </label>
+            <input class="form-check-input" type="checkbox" id="imprimirEtiquetas" checked>
+            <label class="form-check-label" for="imprimirEtiquetas">
+                Imprimir etiquetas (cantidad: <span id="cantidadEtiquetaTexto">0</span>)
+            </label>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-primary btn-sm" onclick="confirmarEnvio()">
-          Sí, guardar
+            Sí, guardar
         </button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Modal de Previsualización -->
+<div class="modal fade" id="previsualizarModal" tabindex="-1" aria-labelledby="previsualizarModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title" id="previsualizarModalLabel">Previsualización de la Imagen</h6>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="previsualizarImagen" class="img-fluid" src="" alt="Imagen capturada">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts para la Cámara y Modal -->
 <script>
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
-    const webcamInput = document.getElementById('webcam_image');
+    const webcamImagesInput = document.getElementById('webcam_images');
     const btnReiniciar = document.getElementById('btnReiniciar');
+    const fotosLista = document.getElementById('fotos-lista');
+    const previsualizarModal = new bootstrap.Modal(document.getElementById('previsualizarModal'));
+    const previsualizarImagen = document.getElementById('previsualizarImagen');
     let stream;
+    let fotosCapturadas = [];
+
 
     function iniciarCamara() {
         navigator.mediaDevices.getUserMedia({ video: true })
@@ -144,18 +180,65 @@
         const context = canvas.getContext('2d');
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageData = canvas.toDataURL('image/png');
-        webcamInput.value = imageData;
-        video.classList.add('d-none');
-        canvas.classList.remove('d-none');
+        fotosCapturadas.push(imageData);
+
+        // Crear contenedor para cada imagen + boton
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('position-relative', 'd-inline-block');
+
+        const imgElement = document.createElement('img');
+        imgElement.src = imageData;
+        imgElement.classList.add('img-thumbnail', 'w-25');
+
+        const deleteButton = document.createElement('button');
+        deleteButton.classList.add('btn', 'btn-sm', 'btn-danger', 'position-absolute');
+        deleteButton.style.top = '0';
+        deleteButton.style.right = '0';
+        deleteButton.innerHTML = '×';
+        deleteButton.title = 'Eliminar esta imagen';
+        deleteButton.onclick = () => eliminarImagen(wrapper, imageData);
+
+        wrapper.appendChild(imgElement);
+        wrapper.appendChild(deleteButton);
+        fotosLista.appendChild(wrapper);
+
+        // Actualizar el campo hidden
+        webcamImagesInput.value = JSON.stringify(fotosCapturadas);
+        console.log('Images actuales:', webcamImagesInput.value);
+
+        // Asegurar que la cámara siga activa
+        video.classList.remove('d-none');
+        canvas.classList.add('d-none');
         btnReiniciar.classList.remove('d-none');
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
     }
 
     function reiniciarCamara() {
         iniciarCamara();
     }
+
+    function eliminarImagen(imgElement, imageData) {
+        // Eliminar la imagen del DOM
+        fotosLista.removeChild(imgElement);
+        
+        // Eliminarla del array de fotos capturadas
+        fotosCapturadas = fotosCapturadas.filter(img => img !== imageData);
+        
+        // Actualizar el campo de webcam_images
+        webcamImagesInput.value = JSON.stringify(fotosCapturadas);
+    }
+
+    function mostrarPrevisualizacion(imagenSrc) {
+        previsualizarImagen.src = imagenSrc;
+        previsualizarModal.show();
+    }
+
+    // Asociar evento de previsualización al pasar el mouse sobre las imágenes
+    document.addEventListener('mouseover', (event) => {
+        if (event.target.tagName === 'IMG' && event.target.classList.contains('img-thumbnail')) {
+            event.target.style.cursor = 'pointer';
+            event.target.onclick = () => mostrarPrevisualizacion(event.target.src);
+        }
+    });
 
     iniciarCamara();
 
@@ -171,13 +254,14 @@
 
     function confirmarEnvio() {
         const imprimir = document.getElementById('imprimirEtiquetas').checked;
-        const cantidad = parseInt(cantidadInput.value) || 0; 
-        const imprimirEtiqueta = document.getElementById('imprimir')
+        const cantidad = parseInt(cantidadInput.value) || 0;
+        const imprimirEtiqueta = document.getElementById('imprimir');
 
-        if(imprimir && cantidad>0){
-            imprimirEtiqueta.value='true'
+        if(imprimir && cantidad > 0){
+            imprimirEtiqueta.value = 'true';
         }
         modal.hide();
+        console.log("webcamImagesInput.value antes de enviar:", webcamImagesInput.value);
         form.submit();
     }
 </script>

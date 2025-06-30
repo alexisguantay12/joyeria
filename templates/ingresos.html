@@ -3,9 +3,9 @@
 {% block content %}
 <div class="px-3 px-md-5">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="text-primary"><i class="fas fa-truck-loading"></i> Ingresos de Mercadería</h3>
+        <h3 class="text-primary"><i class="fas fa-truck-loading"></i> Transferencias de Mercadería</h3>
         <a href="{% url 'products_app:ingreso_mercaderia' %}" class="btn btn-success">
-            <i class="fas fa-plus"></i> Nuevo Ingreso
+            <i class="fas fa-plus"></i> Nueva Transferencia
         </a>
     </div>
 
@@ -18,21 +18,24 @@
                             <tr> 
                                 <th>ID Lote</th>
                                 <th>Usuario</th>
-                                <th>Fecha de Ingreso</th>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Local</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for ingreso in ingresos %}
-                            <tr class="clickable-row" data-url="{% url 'products_app:detalle_ingreso' ingreso.id %}" style="cursor:pointer;">
-                              
+                            <tr id="ingreso-{{ ingreso.id }}" class="clickable-row" data-url="{% url 'products_app:detalle_ingreso' ingreso.id %}" style="cursor:pointer;">
                                 <td>{{ ingreso.id }}</td>
                                 <td>{{ ingreso.user_made.username }}</td>
                                 <td>{{ ingreso.fecha|date:"d/m/Y H:i" }}</td>
-                                <td class="no-click" style="cursor: default;">
-                                    <a href="{% url 'products_app:detalle_ingreso' ingreso.id %}" class="btn btn-sm btn-info">
-                                        <i class="fas fa-eye"></i> Ver
-                                    </a>
+                                <td>{{ ingreso.tipo }}</td>
+                                <td>{{ ingreso.local.nombre }}</td>
+                                <td class="no-click" style="cursor:default;">
+                                    <button class="btn btn-sm btn-danger" title="Eliminar transferencia" aria-label="Eliminar transferencia" onClick="confirmarEliminar({{ ingreso.id }})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -40,35 +43,111 @@
                     </table>
                 </div>
             {% else %}
-                <p class="text-muted">No hay ingresos registrados.</p>
+                <p class="text-muted">No hay transferencias registradas.</p>
             {% endif %}
         </div>
     </div>
 </div>
 
-<!-- FontAwesome para íconos -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Modal Confirmación Eliminar -->
+<div class="modal fade" id="modalEliminar" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-danger">
+      <div class="modal-header bg-danger-subtle">
+        <h6 class="modal-title text-danger"><i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación</h6>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">¿Estás seguro de que querés eliminar esta transferencia? Esta acción no se puede deshacer.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-danger btn-sm" id="btnConfirmarEliminar">
+            <i class="fas fa-trash"></i> Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
-<!-- DataTables CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<!-- Modal de error por tiempo excedido -->
+<div class="modal fade" id="modalErrorTiempo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-warning">
+      <div class="modal-header bg-warning-subtle">
+        <h6 class="modal-title text-warning"><i class="fas fa-clock"></i> Tiempo excedido</h6>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">No es posible eliminar esta transferencia porque ya han pasado más de 30 minutos desde su creación.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-warning btn-sm" data-bs-dismiss="modal">Aceptar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-<!-- jQuery y DataTables JS -->
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
+<!-- Toast de mensaje de éxito -->
+<div id="toastEliminacionExitosa" class="toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="2000">
+    <div class="d-flex">
+        <div class="toast-body">
+            Transferencia eliminada con éxito.
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+</div> 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const rows = document.querySelectorAll(".clickable-row");
-        rows.forEach(row => {
+    let idIngresoAEliminar = null;
+    const modalEliminar = new bootstrap.Modal(document.getElementById('modalEliminar'));
+    const modalErrorTiempo = new bootstrap.Modal(document.getElementById('modalErrorTiempo'));
+
+    function confirmarEliminar(id) {
+        idIngresoAEliminar = id;
+        modalEliminar.show();
+    }
+
+    document.getElementById("btnConfirmarEliminar").addEventListener("click", function () {
+        if (!idIngresoAEliminar) return;
+
+        fetch("{% url 'products_app:eliminar_ingreso' 0 %}".replace("/0/", `/${idIngresoAEliminar}/`), {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "Content-Type": "application/json"
+            }
+        })
+        .then(res => res.json().then(data => ({ status: res.status, body: data })))
+        .then(({ status, body }) => {
+            modalEliminar.hide();
+
+            if (body.success) {
+                document.getElementById(`ingreso-${idIngresoAEliminar}`).remove();
+                new bootstrap.Toast(document.getElementById('toastEliminacionExitosa')).show();
+            } else {
+                if (status === 403 && body.error.includes("30 minutos")) {
+                    modalErrorTiempo.show();
+                } else {
+                    alert(body.error || "Error al eliminar la transferencia.");
+                }
+            }
+        })
+        .catch((error) => {
+            modalEliminar.hide();
+            console.error("Error de red:", error);
+            alert("Error de red al intentar eliminar la transferencia.");
+        });
+    });
+
+    $(document).ready(function () {
+        document.querySelectorAll(".clickable-row").forEach(row => {
             row.addEventListener("click", function (e) {
-                // Ignorar clics en la columna de acciones
                 if (!e.target.closest('.no-click')) {
-                    window.location.href = row.dataset.url;
+                    window.location.href = this.dataset.url;
                 }
             });
         });
 
-        // Inicializar DataTables
         $('#tabla-ingresos').DataTable({
             language: {
                 lengthMenu: "Mostrar _MENU_ registros",
@@ -84,7 +163,7 @@
                     previous: "Anterior"
                 }
             },
-            pageLength: 5 // Cambia este valor según cuántos registros quieras mostrar por defecto
+            pageLength: 5
         });
     });
 </script>

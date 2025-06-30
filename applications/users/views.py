@@ -28,7 +28,7 @@ def lista_usuarios(request):
 
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect('products_app:productos')
+        return redirect('core_app:home')
 
     form = AuthenticationForm(request, data=request.POST or None)
 
@@ -37,7 +37,7 @@ def login_view(request):
             user = form.get_user()
             login(request, user)
             next_url = request.GET.get('next')
-            return redirect(next_url if next_url else 'products_app:productos')
+            return redirect(next_url if next_url else 'core_app:home')
         else:
             messages.error(request, 'Usuario o contraseña incorrectos.')
 

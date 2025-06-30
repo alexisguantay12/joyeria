@@ -4,7 +4,7 @@ from .models import Producto, Categoria
 class ProductoForm(forms.ModelForm):
     class Meta:
         model = Producto
-        fields = ['nombre', 'descripcion', 'precio_venta', 'imagen', 'categoria']
+        fields = ['nombre', 'descripcion','gramos', 'precio_venta',  'categoria']
         widgets = {
             'descripcion': forms.Textarea(attrs={'rows': 3}),
         }

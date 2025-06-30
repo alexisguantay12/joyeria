@@ -1,13 +1,26 @@
+{% load group_tags %}
+{% load static %}
+
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gestión Joyería</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet"> 
+    <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
 
+
+
+    <link rel="stylesheet" href="{% static 'css/datatables.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/font.css' %}">
+    <script src="{% static 'js/jquery.min.js' %}"></script>
+    <script src="{% static 'js/datatables.min.js' %}"></script>
+
+
+    <link rel="icon" type="image/png" href="{% static 'fotos/joyeria.jpg' %}">
     <style>
         body {
             background-color: #f8f9fa;
@@ -55,27 +68,51 @@
 <!-- Barra de navegación -->
 <nav class="navbar navbar-expand-lg navbar-custom shadow-sm">
     <div class="container-fluid">
-        <a class="navbar-brand" href="#">Joyería</a>
+        <a class="navbar-brand" href="{% url 'core_app:home' %}">Joyería</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
+                
                 <li class="nav-item">
-                    <a class="nav-link" href="#"><i class="fas fa-home"></i> Inicio</a>
+                    <a class="nav-link" href="{% url 'core_app:home' %}"><i class="fas fa-home"></i> Inicio</a>
                 </li>
+                {% if request.user|is_in_group:"administrador" %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'products_app:productos' %}"><i class="fas fa-gem"></i> Productos</a>
-                </li>
+                </li>                
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'products_app:lista_ingresos' %}"><i class="fas fa-box-open"></i> Ingreso Stock</a>
+                    <a class="nav-link" href="{% url 'products_app:lista_ingresos' %}"><i class="fas fa-box-open"></i> Transferencias</a>
                 </li>
+                {%endif%}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'ventas_app:listado_ventas' %}"><i class="fas fa-cash-register"></i> Ventas</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#"><i class="fas fa-chart-line"></i> Reportes</a>
+                {% if request.user|is_in_group:"administrador" %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="reportesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-chart-line"></i> Reportes
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="reportesDropdown">
+                        <li>
+                            <a class="dropdown-item" href="{% url 'reportes_app:reporte_ventas_local' %}">
+                                <i class="fas fa-store"></i> Ventas por Local
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#">
+                                <i class="fas fa-exchange-alt"></i> Transferencias
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#">
+                                <i class="fas fa-boxes"></i> Stock por Fecha y Local
+                            </a>
+                        </li>
+                    </ul>
                 </li>
+                {% endif %}
                 <!-- Menú de Usuario -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -124,6 +161,6 @@
         </div>
     </div>
 </div>
-
+<link rel="stylesheet" href="{% static 'css/font.css' %}">
 </body>
 </html>

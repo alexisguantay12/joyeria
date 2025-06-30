@@ -1,12 +1,15 @@
 {% extends 'base.html' %}
-
+{% load group_tags %}
+{% load static %}
 {% block content %}
 <div class="px-3 px-md-5">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="text-primary"><i class="fas fa-boxes"></i> Lista de Productos</h3>
+        {% if request.user|is_in_group:"administrador" %}
         <a href="{% url 'products_app:agregar_producto'%}" class="btn btn-success">
             <i class="fas fa-plus"></i> Agregar Producto
         </a>
+        {% endif %}
     </div>
 
     <div class="card shadow-sm">
@@ -26,11 +29,17 @@
                         </thead>
                         <tbody>
                             {% for producto in productos %}
-                            <tr class="clickable-row" data-url="{% url 'products_app:detalle_producto' producto.id %}" style="cursor:pointer;"> 
+                            <tr id="producto-{{ producto.id }}" class="clickable-row" data-url="{% url 'products_app:detalle_producto' producto.id %}" style="cursor:pointer;">
                                 <td>{{ producto.id }}</td>
                                 <td>
-                                    {% if producto.imagen %}
-                                        <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" class="img-thumbnail" style="width: 60px; height: 60px; object-fit: cover;">
+                                    {% if producto.imagenes.all %}
+                                        {% with primera_imagen=producto.imagenes.first %}
+                                            {% if primera_imagen %}
+                                                <img src="{{ primera_imagen.imagen.url }}" alt="{{ producto.nombre }}" class="img-thumbnail" style="width: 60px; height: 60px; object-fit: cover;">
+                                            {% else %}
+                                                <span class="text-muted">Sin imagen</span>
+                                            {% endif %}
+                                        {% endwith %}
                                     {% else %}
                                         <span class="text-muted">Sin imagen</span>
                                     {% endif %}
@@ -40,7 +49,12 @@
                                 <td>{{ producto.categoria }}</td>
                                 <td class="sin-redireccion">
                                     <a href="#" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
-                                    <a href="#" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro de eliminar este producto?');"><i class="fas fa-trash"></i></a>
+                                    <button class="btn btn-sm btn-danger" title="Eliminar" 
+                                            data-producto="{{ producto.id }}" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#modalEliminar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -54,22 +68,41 @@
     </div>
 </div>
 
-<!-- FontAwesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Modal Confirmación Eliminar -->
+<div class="modal fade" id="modalEliminar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger-subtle">
+                <h6 class="modal-title text-danger"><i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación</h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">¿Estás seguro de que querés eliminar este producto?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-danger btn-sm" id="btnConfirmarEliminar"><i class="fas fa-trash"></i> Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-<!-- DataTables CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<!-- Toast de mensaje de éxito -->
+<div id="toastAccionExitosa" class="toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="2000">
+    <div class="d-flex">
+        <div class="toast-body">
+            Acción realizada con éxito.
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+</div>
 
-<!-- jQuery y DataTables JS -->
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
 <!-- Estilos para hover personalizado -->
 <style>
     tr.clickable-row:hover td:not(.sin-redireccion) {
         background-color: #f2f2f2 !important;
     }
-
     td.sin-redireccion {
         cursor: default !important;
         background-color: white !important;
@@ -77,17 +110,52 @@
 </style>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const rows = document.querySelectorAll(".clickable-row");
-        rows.forEach(row => {
-            row.addEventListener("click", function (e) {
-                // Evita la redirección si se hace clic en un elemento con la clase sin-redireccion
-                if (!e.target.closest('.sin-redireccion')) {
-                    window.location.href = row.dataset.url;
-                }
-            });
-        });
+    let idProductoAEliminar = null;
+    const modalEliminar = new bootstrap.Modal(document.getElementById('modalEliminar'));
 
+    // Asignar id al producto seleccionado para eliminar
+    document.querySelectorAll('[data-bs-target="#modalEliminar"]').forEach(button => {
+        button.addEventListener('click', function (e) {
+            idProductoAEliminar = this.getAttribute('data-producto');
+        });
+    });
+
+    // Confirmar eliminación
+    document.getElementById("btnConfirmarEliminar").addEventListener("click", function () {
+        if (!idProductoAEliminar) return;
+
+        fetch(`/productos/eliminar/${idProductoAEliminar}/`, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}"
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById(`producto-${idProductoAEliminar}`).remove();
+                modalEliminar.hide();
+
+                // Mostrar el toast de éxito
+                var toast = new bootstrap.Toast(document.getElementById('toastAccionExitosa'));
+                toast.show();
+            } else {
+                alert(data.error || "Error al eliminar el producto.");
+            }
+        })
+        .catch(() => alert("Error de red al intentar eliminar."));
+    });
+
+    // Redirección al hacer clic en la fila (excepto en acciones)
+    document.querySelectorAll(".clickable-row").forEach(row => {
+        row.addEventListener("click", function (e) {
+            if (!e.target.closest('.sin-redireccion')) {
+                window.location.href = this.dataset.url;
+            }
+        });
+    });
+
+    $(document).ready(function() {
         $('#tabla-productos').DataTable({
             language: {
                 lengthMenu: "Mostrar _MENU_ registros",
@@ -104,8 +172,18 @@
                 }
             },
             pageLength: 30,
-            order: [[1, 'desc']] 
+            order: [[0, 'desc']]
         });
+
+        // Mostrar toast si se agregó un producto (?added=1)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('added') === '1') {
+            var toast = new bootstrap.Toast(document.getElementById('toastAccionExitosa'));
+            toast.show();
+
+            // Limpia el parámetro de la URL sin recargar
+            window.history.replaceState(null, null, window.location.pathname);
+        }
     });
 </script>
 {% endblock %}

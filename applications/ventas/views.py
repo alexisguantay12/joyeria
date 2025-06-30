@@ -12,12 +12,18 @@ from .models import Venta, DetalleVenta
 from applications.productos.models import Producto,StockLocal  # Ajustá si cambia la ubicación
 
 
+def no_es_vendedor(user):
+    return not user.groups.filter(name='vendedor').exists()
+
 @login_required
 def listado_ventas_view(request):
     """
     Muestra el listado de ventas ordenadas de la más reciente a la más antigua.
     """
-    ventas = Venta.objects.all().order_by('-fecha')
+    if no_es_vendedor(request.user):
+        ventas= Venta.objects.all().order_by('-fecha')
+    else:
+        ventas = Venta.objects.filter(user_made=request.user).order_by('-fecha')
     return render(request, 'ventas/ventas.html', {'ventas': ventas})
 
 
@@ -65,7 +71,7 @@ def registrar_venta_api(request):
 
                     if stock.cantidad < cantidad:
                         raise Exception(f"Stock insuficiente para {producto.nombre}.")
-
+                    print('Elemento aca:',producto.precio_venta)
                     # Descontar stock y guardar
                     stock.cantidad -= cantidad
                     stock.save()  # <--- importante
@@ -81,6 +87,7 @@ def registrar_venta_api(request):
                     )
 
                 venta.calcular_total()  # <--- se llama una sola vez al final
+                print("Elementos procesados")
 
             return JsonResponse({"success": True})
 
@@ -130,9 +137,12 @@ def detalle_venta_view(request, id):
     try:
         venta = Venta.objects.get(id=id)
         detalles = DetalleVenta.objects.filter(venta=venta)
+        total_general = sum([d.subtotal for d in detalles])
+        
         return render(request, 'ventas/detalle_venta.html', {
             'venta': venta,
-            'detalles': detalles
+            'detalles': detalles,
+            'total_general':total_general
         })
     except Venta.DoesNotExist:
         return redirect('ventas_app:listado_ventas')

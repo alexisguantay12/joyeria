@@ -28,7 +28,7 @@
                             {% for venta in ventas %}
                             <tr id="venta-{{ venta.id }}" class="clickable-row" data-url="{% url 'ventas_app:detalle_venta' venta.id %}">
                                 <td>{{ venta.id }}</td>
-                                <td>{{ venta.usuario.username }}</td>
+                                <td>{{ venta.user_made.username }}</td>
                                 <td>{{ venta.fecha|date:"d/m/Y H:i" }}</td>
                                 <td>{{ venta.local.nombre }}</td>
                                 <td>${{ venta.total }}</td>
@@ -70,13 +70,18 @@
   </div>
 </div>
 
-<!-- FontAwesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Toast de mensaje de éxito -->
+<div id="toastAccionExitosa" class="toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3"
+     role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="2000">
+    <div class="d-flex">
+        <div class="toast-body">
+            Acción realizada con éxito.
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+</div>
 
-<!-- DataTables -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
 
 <script>
     let idVentaAEliminar = null;
@@ -101,6 +106,10 @@
             if (data.success) {
                 document.getElementById(`venta-${idVentaAEliminar}`).remove();
                 modalEliminar.hide();
+
+                // Mostrar toast de éxito
+                var toast = new bootstrap.Toast(document.getElementById('toastAccionExitosa'));
+                toast.show();
             } else {
                 alert(data.error || "Error al eliminar la venta.");
             }
@@ -135,6 +144,14 @@
                 }
             });
         });
+
+        // Mostrar toast si ?added=1 (nueva venta creada)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('added') === '1') {
+            var toast = new bootstrap.Toast(document.getElementById('toastAccionExitosa'));
+            toast.show();
+            window.history.replaceState(null, null, window.location.pathname);
+        }
     });
 </script>
 {% endblock %}

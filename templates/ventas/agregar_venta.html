@@ -129,7 +129,7 @@
         const codigo = this.value.trim();
         if (!codigo) return;
 
-        fetch(`/productos/buscar_producto_por_codigo/?codigo=${codigo}`)
+        fetch(`/productos/buscar_producto_por_codigo_venta/?codigo=${codigo}`)
             .then(res => res.json())
             .then(data => {
                 if (data.success) {

@@ -1,20 +1,43 @@
 {% extends 'base.html' %}
-{% block content %}
-<div class="container mt-4">
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h5 class="text-primary"><i class="fas fa-file-invoice"></i> Detalle de Venta #{{ venta.id }}</h5>
-            <hr>
-            <p><strong>Usuario:</strong> {{ venta.usuario.username }}</p>
-            <p><strong>Fecha:</strong> {{ venta.fecha|date:"d/m/Y H:i" }}</p>
-            <p><strong>Local:</strong> {{ venta.local.nombre }}</p>
-            <p><strong>Total:</strong> ${{ venta.total }}</p>
+{% load static %}
 
-            <div class="table-responsive mt-3">
-                <table class="table table-sm table-bordered">
-                    <thead class="table-light">
-                        <tr>
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-sm rounded-4 border-0">
+        <div class="card-body p-4">
+
+            <h4 class="mb-3 text-primary fw-bold">
+                <i class="fas fa-receipt me-2"></i>Detalle de Venta #{{ venta.id }}
+            </h4>
+            <hr>
+
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="bg-light border p-3 rounded shadow-sm">
+                        <p class="text-muted mb-1"><i class="fas fa-user me-2 text-primary"></i>Usuario</p>
+                        <h6 class="fw-semibold">{{ venta.user_made.username }}</h6>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="bg-light border p-3 rounded shadow-sm">
+                        <p class="text-muted mb-1"><i class="fas fa-calendar-alt me-2 text-primary"></i>Fecha</p>
+                        <h6 class="fw-semibold">{{ venta.fecha|date:"d/m/Y H:i" }}</h6>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="bg-light border p-3 rounded shadow-sm">
+                        <p class="text-muted mb-1"><i class="fas fa-store-alt me-2 text-primary"></i>Local</p>
+                        <h6 class="fw-semibold">{{ venta.local.nombre }}</h6>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle rounded-3 overflow-hidden">
+                    <thead class="table-light text-center">
+                        <tr class="fw-semibold">
                             <th>Producto</th>
+                            <th>Imagen</th>
                             <th>Precio Unitario</th>
                             <th>Cantidad</th>
                             <th>Subtotal</th>
@@ -24,16 +47,58 @@
                         {% for d in detalles %}
                         <tr>
                             <td>{{ d.producto.nombre }}</td>
-                            <td>${{ d.precio_unitario }}</td>
-                            <td>{{ d.cantidad }}</td>
-                            <td>${{ d.precio_unitario|floatformat:2|add:""|add:d.cantidad|floatformat:2 }}</td>
+                            <td class="text-center">
+                                {% with primera=d.producto.imagenes.first %}
+                                    {% if primera %}
+                                        <img src="{{ primera.imagen.url }}" alt="{{ d.producto.nombre }}"
+                                             class="img-thumbnail shadow-sm"
+                                             style="width: 60px; height: 60px; object-fit: cover; cursor: pointer;"
+                                             onclick="mostrarImagen('{{ primera.imagen.url }}')">
+                                    {% else %}
+                                        <span class="text-muted">Sin imagen</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-end">${{ d.precio_unitario|floatformat:2 }}</td>
+                            <td class="text-center">{{ d.cantidad }}</td>
+                            <td class="text-end">${{ d.subtotal|floatformat:2 }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="text-end fw-semibold">Total:</td>
+                            <td class="text-end text-success fw-bold">${{ total_general|floatformat:2 }}</td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
-            <a href="{% url 'ventas_app:listado_ventas' %}" class="btn btn-secondary mt-3">Volver</a>
+
+            <div class="text-end mt-4">
+                <a href="{% url 'ventas_app:listado_ventas' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-1"></i> Volver
+                </a>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Modal para mostrar imagen ampliada -->
+<div class="modal fade" id="imagenModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 bg-transparent">
+            <div class="modal-body text-center">
+                <img id="imagenAmpliada" src="" class="img-fluid rounded shadow" alt="Imagen producto">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function mostrarImagen(url) {
+        const modalImg = document.getElementById('imagenAmpliada');
+        modalImg.src = url;
+        new bootstrap.Modal(document.getElementById('imagenModal')).show();
+    }
+</script>
 {% endblock %}

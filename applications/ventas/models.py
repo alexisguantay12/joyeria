@@ -5,7 +5,7 @@ from applications.core.models import BaseAbstractWithUser
 # Manager personalizado
 class VentaManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(user_deleted__isnull=True)
+        return super().get_queryset().filter(is_deleted=False)
 
 class Venta(BaseAbstractWithUser):  
     local = models.ForeignKey(
@@ -37,7 +37,9 @@ class Venta(BaseAbstractWithUser):
         return f"Venta #{self.id} - {self.fecha.strftime('%d/%m/%Y %H:%M')}"
 
     def calcular_total(self):
-        total = sum([detalle.subtotal() for detalle in self.detalles.all()])
+        print("Elemento paso total al resto")
+        total = sum([detalle.subtotal for detalle in self.detalles.all()])
+        print("Elemento paso total ")
         self.total = total
         self.save()
 
@@ -65,6 +67,7 @@ class DetalleVenta(BaseAbstractWithUser):
         verbose_name = "Detalle de Venta"
         verbose_name_plural = "Detalles de Venta"
 
+    @property 
     def subtotal(self):
         return self.cantidad * self.precio_unitario
 
