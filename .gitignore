@@ -12,8 +12,7 @@ secret
 /media/
 *.log
 
-# Archivos estáticos generados
-/static/
+# Archivos estáticos generados 
 
 # Archivos de sistema y editores
 .DS_Store
