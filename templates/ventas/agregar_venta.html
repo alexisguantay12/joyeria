@@ -197,8 +197,16 @@
 
         actualizarTotal();
         modal.hide();
+        scanner.focus();
     }
-
+    document.querySelectorAll('.modal').forEach(modalEl => {
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            const scanner = document.getElementById('scanner');
+            if (scanner) {
+                scanner.focus();
+            }
+        });
+    });
     function agregarFila(producto, cantidad) {
         const fila = document.createElement("tr");
         fila.setAttribute("data-producto-id", producto.id);

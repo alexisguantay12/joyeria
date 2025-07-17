@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-boxes me-2"></i> Reporte de Stock por Local</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label for="local" class="form-label">Local</label>
+                    <select name="local" id="local" class="form-select">
+                        <option value="">Todos los locales</option>
+                        {% for loc in locales %}
+                            <option value="{{ loc.id }}" {% if local_id == loc.id|stringformat:"s" %}selected{% endif %}>{{ loc.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-grid align-items-end">
+                    <button class="btn btn-primary"><i class="fas fa-search"></i> Generar</button>
+                </div>
+            </form>
+
+            {% if resultados %}
+                <div class="d-flex justify-content-end mb-2">
+                    <a href="?{% if local_id %}local={{ local_id }}&{% endif %}export=excel"
+                       class="btn btn-success btn-sm">
+                        <i class="fas fa-file-excel"></i> Descargar Excel
+                    </a>
+                </div>
+
+                <div style="max-height: 350px; overflow-y: auto;">
+                    <table class="table table-bordered table-sm small align-middle">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>ID Producto</th>
+                                <th>Nombre</th>
+                                <th>Local</th>
+                                <th>Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in resultados %}
+                            <tr>
+                                <td>{{ r.producto.id }}</td>
+                                <td>{{ r.producto.nombre }}</td>
+                                <td>{{ r.local.nombre }}</td>
+                                <td>{{ r.cantidad }}</td>
+                            </tr>
+                            {% endfor %} 
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-warning mt-3">
+                    No hay productos con stock para los filtros seleccionados.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

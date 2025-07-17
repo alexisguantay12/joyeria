@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Vista previa de etiqueta</title>
+  <style>
+    @page {
+      size: 66mm 11mm;
+      margin: 0;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 66mm;
+      height: 11mm;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f8f8f8;
+    }
+
+    .etiqueta {
+      width: 66mm;
+      height: 11mm;
+      border: 1px dashed red; /* visualización del límite real */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .etiqueta img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .etiqueta {
+        border: none; /* no imprimir bordes */
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="etiqueta">
+    <img src="{{ etiqueta_url }}" alt="Etiqueta">
+  </div>
+</body>
+</html>

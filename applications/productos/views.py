@@ -10,7 +10,7 @@ from django.db import transaction
 from .forms import ProductoForm
 from .models import (
     Producto, StockLocal, Local,
-    MovimientoStock, IngresoLote,ImagenProducto
+    MovimientoStock, IngresoLote,ImagenProducto, Categoria
 )
 
 import os
@@ -20,6 +20,8 @@ import base64
 import barcode
 from barcode.writer import ImageWriter
 from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
+from barcode import Code128
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -33,109 +35,160 @@ def no_es_vendedor(user):
 # PRODUCTO: Crear, listar, buscar, ver detalle
 # ─────────────────────────────────────────────────────────────────────
 from django.contrib.staticfiles import finders
+
+@login_required
 @login_required
 @user_passes_test(no_es_vendedor)
 def agregar_producto(request):
     if request.method == 'POST':
-        form = ProductoForm(request.POST, request.FILES)
+        nombre = request.POST.get('nombre', '').strip()
+        precio = request.POST.get('precio_venta', '').strip()
+        gramos = request.POST.get('gramos', '0').strip()
+        descripcion = request.POST.get('descripcion', '').strip()
+        categoria_id = request.POST.get('categoria')
+        cantidad = request.POST.get('cantidad', '1').strip()
 
-        if form.is_valid():
-            with transaction.atomic():
-                producto = form.save(commit=False)
-                
-                producto.save()
+        errores = []
+        if not nombre:
+            errores.append("El nombre es obligatorio.")
+        if not precio:
+            errores.append("El precio es obligatorio.")
+        if not categoria_id:
+            errores.append("La categoría es obligatoria.")
 
-                # Procesar imágenes desde la cámara (base64)
-                webcam_images_data = request.POST.get('webcam_images')
-                print('Muestra', webcam_images_data)
-                if webcam_images_data:
-                    try:
-                        # Decodificar las imágenes base64
-                        print('Muestra', webcam_images_data) 
-                        webcam_images = json.loads(webcam_images_data)
-                        for img_data in webcam_images:
-                            format, imgstr = img_data.split(';base64,')
-                            ext = format.split('/')[-1]
-                            filename = f"{uuid.uuid4()}.{ext}"
-                            data = ContentFile(base64.b64decode(imgstr), name=filename)
+        try:
+            precio = float(precio)
+        except ValueError:
+            errores.append("El precio debe ser un número válido.")
 
-                            # Crear una instancia de ImagenProducto y asociarla al producto
-                            imagen_producto = ImagenProducto(producto=producto, imagen=data)
-                            imagen_producto.save()
+        try:
+            gramos = int(gramos)
+        except ValueError:
+            gramos = 0
 
-                    except Exception as e:
-                        print(f"Error al procesar las imágenes: {e}")
+        try:
+            cantidad = int(cantidad)
+        except ValueError:
+            cantidad = 1
 
+        if errores:
+            categorias = Categoria.objects.all()
+            return render(request, 'agregar_producto.html', {
+                'errores': errores,
+                'categorias': categorias
+            })
 
-                # Crear código de barras
-                barcode_dir = os.path.join(settings.MEDIA_ROOT, 'barcodes')
-                os.makedirs(barcode_dir, exist_ok=True)
+        with transaction.atomic():
+            producto = Producto(
+                nombre=nombre,
+                descripcion=descripcion,
+                precio_venta=precio,
+                gramos=gramos,
+                categoria=Categoria.objects.get(id=categoria_id),
+                user_made=request.user
+            )
+            producto.save()
 
-                codigo = str(producto.id).zfill(12)
-                barcode_path = os.path.join(barcode_dir, f'{codigo}')
-
-                options = {
-                    "module_width": 0.4,
-                    "module_height": 15.0,
-                    "write_text": False,
-                    "quiet_zone": 6.0
-                }
-
-                EAN = barcode.get_barcode_class('code128')
-                ean = EAN(codigo, writer=ImageWriter())
-                ean.save(barcode_path, options)
-
-                producto.codigo_barras = f'barcodes/{codigo}.png'
-                producto.save()
-
-                # Agregar texto debajo del código de barras
-                img = Image.open(f"{barcode_path}.png")
-                new_height = img.height + 40
-                new_img = Image.new("RGB", (img.width, new_height), "white")
-                new_img.paste(img, (0, 0))
- 
-                font_path = finders.find('fonts/DejaVuSans.ttf')
-                font = ImageFont.truetype(font_path, 30)
-                draw = ImageDraw.Draw(new_img)
-
-                char_spacing = 21
-                char_widths = [draw.textsize(c, font=font)[0] for c in codigo]
-                total_width = sum(char_widths) + char_spacing * (len(codigo) - 1)
-                x_text = (img.width - total_width) // 2
-                y_text = img.height + 5
-                x_cursor = x_text
-
-                for c in codigo:
-                    draw.text((x_cursor, y_text), c, font=font, fill="black")
-                    x_cursor += draw.textsize(c, font=font)[0] + char_spacing
-
-                new_img.save(f"{barcode_path}.png")
-
-                # Registrar stock inicial en local 1
+            # Procesar imágenes base64 (cámara)
+            webcam_images_data = request.POST.get('webcam_images')
+            if webcam_images_data:
                 try:
-                    cantidad = int(request.POST.get("cantidad", 0))
-                except ValueError:
-                    cantidad = 0
-                print('CANTIDAD',cantidad)
-                local = Local.objects.get(id=1)
-                stock_obj, _ = StockLocal.objects.get_or_create(producto=producto, local=local)
-                stock_obj.cantidad += cantidad
-                stock_obj.save()
+                    webcam_images = json.loads(webcam_images_data)
+                    for img_data in webcam_images:
+                        format, imgstr = img_data.split(';base64,')
+                        ext = format.split('/')[-1]
+                        filename = f"{uuid.uuid4()}.{ext}"
+                        data = ContentFile(base64.b64decode(imgstr), name=filename)
+                        ImagenProducto.objects.create(producto=producto, imagen=data)
+                except Exception as e:
+                    print(f"Error procesando imágenes: {e}")
 
-                imprimir_etiquetas = request.POST.get('imprimir') == 'true'
-                print('IMPRIMIR',imprimir_etiquetas)
-                if imprimir_etiquetas and cantidad > 0:
-                    return render(request, 'imprimir_etiqueta.html', {
-                        'etiqueta_url': producto.codigo_barras.url,
-                        'cantidad': cantidad,
-                        'repeticiones': range(cantidad)  # 👈 creamos una lista de repeticiones
-                    })
+            # Crear etiqueta térmica plegable
+            codigo = producto.id
+            etiqueta_rel_path = generar_etiqueta_plegable(producto.nombre, codigo, codigo)
+            producto.codigo_barras = etiqueta_rel_path
+            producto.save()
 
-            return redirect('products_app:productos')
-    else:
-        form = ProductoForm()
+            # Agregar stock inicial
+            local = Local.objects.get(id=1)
+            stock_obj, _ = StockLocal.objects.get_or_create(producto=producto, local=local)
+            stock_obj.cantidad += cantidad
+            stock_obj.save()
 
-    return render(request, 'agregar_producto.html', {'form': form})
+            imprimir_etiquetas = request.POST.get('imprimir') == 'true'
+            if imprimir_etiquetas and cantidad > 0:
+                return render(request, 'imprimir_etiqueta.html', {
+                    'etiqueta_url': producto.codigo_barras.url,
+                    'cantidad': cantidad,
+                    'repeticiones': range(cantidad)
+                })
+
+        return redirect('products_app:productos')
+
+    categorias = Categoria.objects.all()
+    return render(request, 'agregar_producto.html', {'categorias': categorias})
+
+def generar_etiqueta_plegable(nombre_producto, codigo_producto, filename):
+    from PIL import Image, ImageDraw
+    from io import BytesIO
+    from barcode import EAN8
+    from barcode.writer import ImageWriter
+    import os
+    from django.conf import settings
+
+    # Asegurar 8 dígitos
+    codigo_producto = str(codigo_producto)
+    codigo_producto = codigo_producto.zfill(8)  
+
+    print("Codigo producto",codigo_producto)
+    # Resolución 300 DPI
+    dpi = 300
+    mm_to_px = lambda mm: int((mm / 25.4) * dpi)
+
+    # Tamaño etiqueta: 66 x 11 mm
+    ancho_px = mm_to_px(66)
+    alto_px = mm_to_px(11)
+
+    # ⚙️ Ajustes del código de barras
+    ancho_codigo_px = mm_to_px(25.4)   # ✅ más ancho aún
+    alto_codigo_px = mm_to_px(6)   # ✅ más bajo
+
+    # Crear imagen en blanco
+    etiqueta = Image.new("RGB", (ancho_px, alto_px), "white")
+    draw = ImageDraw.Draw(etiqueta)
+
+    # Generar código EAN8 en buffer
+    buffer = BytesIO()
+    print("Codigo:",codigo_producto)
+    code = EAN8(codigo_producto, writer=ImageWriter())
+    code.write(buffer, {
+        "module_width": 0.45,     # barras más anchas
+        "module_height": alto_codigo_px,
+        "quiet_zone": 1.0,
+        "font_size": 0,
+        "write_text": False
+    })
+    print("Code:",codigo_producto)
+    buffer.seek(0)
+    img_barcode = Image.open(buffer).convert("RGB")
+
+    # Redimensionar exactamente
+    img_barcode = img_barcode.resize((ancho_codigo_px, alto_codigo_px), Image.LANCZOS)
+
+    # 🔧 Posición (bien arriba, pegado a la izquierda)
+    x_barcode = mm_to_px(1)
+    y_barcode = mm_to_px(0)  # bien arriba
+
+    etiqueta.paste(img_barcode, (x_barcode, y_barcode))
+
+    # Guardar
+    etiquetas_dir = os.path.join(settings.MEDIA_ROOT, 'etiquetas')
+    os.makedirs(etiquetas_dir, exist_ok=True)
+    ruta_completa = os.path.join(etiquetas_dir, f"{filename}.png")
+    etiqueta.save(ruta_completa)
+
+    return f"etiquetas/{filename}.png"
+
 
 
 @csrf_exempt
@@ -162,6 +215,29 @@ def eliminar_producto_api(request, id):
     return JsonResponse({"success": False, "error": "Método no permitido"}, status=405)
 
 
+@login_required
+def consultar_precio(request):
+    codigo = request.GET.get('codigo')
+    if not codigo:
+        return JsonResponse({'success': False, 'error': 'Código no proporcionado'})
+
+    try:
+        producto = Producto.objects.get(id=codigo)
+    except Producto.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Producto no encontrado'})
+
+    # Buscar el stock, si no existe devolver 0
+    stock = StockLocal.objects.filter(producto=producto, local=request.user.local).first()
+    cantidad = stock.cantidad if stock else 0
+    fotos = [img.imagen.url for img in producto.imagenes.all()]
+    foto_principal = fotos[0] if fotos else ""
+    return JsonResponse({
+        'success': True,
+        'nombre': producto.nombre,
+        'precio_venta': str(producto.precio_venta),
+        'stock': cantidad,
+        'foto':foto_principal
+    })
 
 
 @login_required

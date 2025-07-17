@@ -11,7 +11,17 @@
                 </a>
             </div>
 
-            <form method="post" enctype="multipart/form-data">
+            {% if errores %}
+                <div class="alert alert-danger">
+                    <ul class="mb-0">
+                        {% for error in errores %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <form method="post" autocomplete="off" enctype="multipart/form-data">
                 {% csrf_token %}
                 <input type="hidden" name="imprimir" id="imprimir" value="false">
                 <input type="hidden" name="webcam_images" id="webcam_images">
@@ -19,56 +29,37 @@
                 <div class="row mb-2">
                     <div class="col-md-4">
                         <label class="form-label mb-1">Nombre</label>
-                        <input type="text" name="{{ form.nombre.name }}" id="{{ form.nombre.id_for_label }}"
-                               class="form-control form-control-sm" value="{{ form.nombre.value|default_if_none:'' }}">
+                        <input type="text" name="nombre" id="nombre" class="form-control form-control-sm" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-1">Precio</label>
-                        <input type="number" step="0.01" name="{{ form.precio_venta.name }}"
-                               id="{{ form.precio_venta.id_for_label }}" class="form-control form-control-sm"
-                               value="{{ form.precio_venta.value|default_if_none:'' }}">
+                        <input type="number" step="0.01" name="precio_venta" min="0.01" id="precio_venta" class="form-control form-control-sm" required>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-1">Cantidad</label>
-                        <input type="number" step="1" name="cantidad" id="cantidad"
-                               class="form-control form-control-sm" value="1">
+                        <input type="number" name="cantidad" id="cantidad" min="1" class="form-control form-control-sm" value="1">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-1">Gramos</label>
-                        <input type="number" step="1" name="{{ form.gramos.name }}"
-                               id="{{ form.gramos.id_for_label }}" class="form-control form-control-sm"
-                               value="1">
+                        <input type="number" name="gramos" id="gramos" class="form-control form-control-sm" value="0">
                     </div>
                 </div>
 
                 <div class="mb-2">
                     <label class="form-label mb-1">Descripción</label>
-                    <textarea name="{{ form.descripcion.name }}" id="{{ form.descripcion.id_for_label }}"
-                              class="form-control form-control-sm" rows="2">{{ form.descripcion.value|default_if_none:'' }}</textarea>
+                    <textarea name="descripcion" id="descripcion" class="form-control form-control-sm" rows="2"></textarea>
                 </div>
 
                 <div class="row mb-2">
                     <div class="col-md-6">
                         <label class="form-label mb-1">Categoría</label>
-                        <select name="{{ form.categoria.name }}" id="{{ form.categoria.id_for_label }}"
-                                class="form-select form-select-sm">
-                            {% for option in form.categoria.field.choices %}
-                                <option value="{{ option.0 }}" {% if form.categoria.value == option.0 %}selected{% endif %}>
-                                    {{ option.1 }}
-                                </option>
+                        <select name="categoria" id="categoria" class="form-select form-select-sm" required>
+                            <option value="" selected disabled>Seleccione una categoría</option>
+                            {% for categoria in categorias %}
+                                <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label mb-1">Imagen</label>
-                        <input type="file" name="{{ form.imagen.name }}" id="{{ form.imagen.id_for_label }}"
-                               class="form-control form-control-sm">
-                    </div>
-                </div>
-
-                <div class="mb-2">
-                    <label class="form-label mb-1">Fotos adicionales</label>
-                    <input type="file" name="fotos_adicionales" multiple class="form-control form-control-sm">
                 </div>
 
                 <!-- Cámara -->
@@ -77,24 +68,20 @@
                         <label class="form-label mb-1"><i class="fas fa-camera"></i> Cámara</label>
                         <div class="position-relative">
                             <video id="video" class="border rounded w-100" height="180" autoplay></video>
-                            <canvas id="canvas" width="320" height="180"
-                                    class="d-none border rounded mt-1 w-100"></canvas>
+                            <canvas id="canvas" width="320" height="180" class="d-none border rounded mt-1 w-100"></canvas>
                         </div>
                     </div>
                     <div class="col-md-6 d-flex flex-column align-items-center justify-content-center gap-2">
                         <button type="button" class="btn btn-dark btn-sm w-100" onclick="capturar()">
                             <i class="fas fa-camera"></i> Capturar
                         </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 d-none" id="btnReiniciar" onclick="reiniciarCamara()">
-                            <i class="fas fa-sync-alt"></i> Tomar otra foto
-                        </button>
                     </div>
                     <div id="capturadas" class="mt-2">
                         <h6>Fotos Capturadas:</h6>
                         <div id="fotos-lista" class="d-flex flex-wrap gap-2">
-                            <!-- Las imágenes capturadas se añadirán aquí -->
+                            <!-- Imágenes desde cámara -->
                         </div>
-                    </div> 
+                    </div>
                 </div>
 
                 <div class="text-end mt-3">
@@ -107,73 +94,69 @@
     </div>
 </div>
 
-<!-- Modal de Confirmación -->
+<!-- Modal Confirmación -->
 <div class="modal fade" id="confirmarModal" tabindex="-1" aria-labelledby="confirmarModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h6 class="modal-title text-primary" id="confirmarModalLabel"><i class="fas fa-question-circle"></i> Confirmar acción</h6>
-        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body">
-        <p>¿Está seguro de que desea guardar este producto?</p>
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="imprimirEtiquetas" checked>
-            <label class="form-check-label" for="imprimirEtiquetas">
-                Imprimir etiquetas (cantidad: <span id="cantidadEtiquetaTexto">0</span>)
-            </label>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title text-primary" id="confirmarModalLabel"><i class="fas fa-question-circle"></i> Confirmar acción</h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea guardar este producto?</p>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="imprimirEtiquetas" checked>
+                    <label class="form-check-label" for="imprimirEtiquetas">
+                        Imprimir etiquetas (cantidad: <span id="cantidadEtiquetaTexto">0</span>)
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="confirmarEnvio()">Sí, guardar</button>
+            </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary btn-sm" onclick="confirmarEnvio()">
-            Sí, guardar
-        </button>
-      </div>
     </div>
-  </div>
 </div>
 
-<!-- Modal de Previsualización -->
+<!-- Modal Previsualización -->
 <div class="modal fade" id="previsualizarModal" tabindex="-1" aria-labelledby="previsualizarModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h6 class="modal-title" id="previsualizarModalLabel">Previsualización de la Imagen</h6>
-        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body text-center">
-        <img id="previsualizarImagen" class="img-fluid" src="" alt="Imagen capturada">
-      </div>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="previsualizarModalLabel">Previsualización de la Imagen</h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="previsualizarImagen" class="img-fluid" src="" alt="Imagen capturada">
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
-<!-- Scripts para la Cámara y Modal -->
+<!-- Script cámara y envío -->
 <script>
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const webcamImagesInput = document.getElementById('webcam_images');
-    const btnReiniciar = document.getElementById('btnReiniciar');
     const fotosLista = document.getElementById('fotos-lista');
     const previsualizarModal = new bootstrap.Modal(document.getElementById('previsualizarModal'));
     const previsualizarImagen = document.getElementById('previsualizarImagen');
+    const form = document.querySelector('form');
+    const modal = new bootstrap.Modal(document.getElementById('confirmarModal'));
+    const cantidadInput = document.getElementById('cantidad');
+    const cantidadEtiquetaTexto = document.getElementById('cantidadEtiquetaTexto');
+
     let stream;
     let fotosCapturadas = [];
-
 
     function iniciarCamara() {
         navigator.mediaDevices.getUserMedia({ video: true })
             .then((s) => {
                 stream = s;
                 video.srcObject = stream;
-                video.classList.remove('d-none');
-                canvas.classList.add('d-none');
-                btnReiniciar.classList.add('d-none');
             })
-            .catch((err) => {
-                console.error("Error accediendo a la cámara: ", err);
-            });
+            .catch((err) => console.error("Error cámara: ", err));
     }
 
     function capturar() {
@@ -182,7 +165,6 @@
         const imageData = canvas.toDataURL('image/png');
         fotosCapturadas.push(imageData);
 
-        // Crear contenedor para cada imagen + boton
         const wrapper = document.createElement('div');
         wrapper.classList.add('position-relative', 'd-inline-block');
 
@@ -195,35 +177,18 @@
         deleteButton.style.top = '0';
         deleteButton.style.right = '0';
         deleteButton.innerHTML = '×';
-        deleteButton.title = 'Eliminar esta imagen';
         deleteButton.onclick = () => eliminarImagen(wrapper, imageData);
 
         wrapper.appendChild(imgElement);
         wrapper.appendChild(deleteButton);
         fotosLista.appendChild(wrapper);
 
-        // Actualizar el campo hidden
         webcamImagesInput.value = JSON.stringify(fotosCapturadas);
-        console.log('Images actuales:', webcamImagesInput.value);
-
-        // Asegurar que la cámara siga activa
-        video.classList.remove('d-none');
-        canvas.classList.add('d-none');
-        btnReiniciar.classList.remove('d-none');
     }
 
-    function reiniciarCamara() {
-        iniciarCamara();
-    }
-
-    function eliminarImagen(imgElement, imageData) {
-        // Eliminar la imagen del DOM
-        fotosLista.removeChild(imgElement);
-        
-        // Eliminarla del array de fotos capturadas
+    function eliminarImagen(wrapper, imageData) {
+        fotosLista.removeChild(wrapper);
         fotosCapturadas = fotosCapturadas.filter(img => img !== imageData);
-        
-        // Actualizar el campo de webcam_images
         webcamImagesInput.value = JSON.stringify(fotosCapturadas);
     }
 
@@ -232,20 +197,12 @@
         previsualizarModal.show();
     }
 
-    // Asociar evento de previsualización al pasar el mouse sobre las imágenes
     document.addEventListener('mouseover', (event) => {
         if (event.target.tagName === 'IMG' && event.target.classList.contains('img-thumbnail')) {
             event.target.style.cursor = 'pointer';
             event.target.onclick = () => mostrarPrevisualizacion(event.target.src);
         }
     });
-
-    iniciarCamara();
-
-    const form = document.querySelector('form');
-    const modal = new bootstrap.Modal(document.getElementById('confirmarModal'));
-    const cantidadInput = document.getElementById('cantidad');
-    const cantidadEtiquetaTexto = document.getElementById('cantidadEtiquetaTexto');
 
     function mostrarModalConfirmacion() {
         cantidadEtiquetaTexto.textContent = cantidadInput.value || '0';
@@ -255,14 +212,11 @@
     function confirmarEnvio() {
         const imprimir = document.getElementById('imprimirEtiquetas').checked;
         const cantidad = parseInt(cantidadInput.value) || 0;
-        const imprimirEtiqueta = document.getElementById('imprimir');
-
-        if(imprimir && cantidad > 0){
-            imprimirEtiqueta.value = 'true';
-        }
+        document.getElementById('imprimir').value = (imprimir && cantidad > 0) ? 'true' : 'false';
         modal.hide();
-        console.log("webcamImagesInput.value antes de enviar:", webcamImagesInput.value);
         form.submit();
     }
+
+    iniciarCamara();
 </script>
 {% endblock %}

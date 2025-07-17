@@ -23,11 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-$4xibw8@r!$*u!bsu^(-*7j1)oe14!@jia7n!z4mvls!)$n74*'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['localhost','5fdf-2803-9800-9405-4102-d559-2e73-1fdc-34a9.ngrok-free.app','joyeriasalta.pythonanywhere.com']
-
-
 
 # Application definition
 
@@ -156,13 +154,13 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
-
 USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = True
+TIME_ZONE = 'America/Argentina/Buenos_Aires'
+USE_TZ = False
+
 
 
 # Static files (CSS, JavaScript, Images)

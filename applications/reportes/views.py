@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, F, DecimalField, ExpressionWrapper, Q
-from applications.productos.models import Local
+from applications.productos.models import Local,StockLocal
 from applications.ventas.models import DetalleVenta
 from datetime import datetime
 from openpyxl import Workbook
@@ -121,3 +121,66 @@ def reporte_ventas_por_local(request):
         'local_id': local_id,
     }
     return render(request, 'reportes/reporte_ventas_por_local.html', context)
+
+@login_required
+def reporte_stock_por_local(request):
+    local_id = request.GET.get('local')
+
+    filtros = Q(cantidad__gt=0)  # Cambié 'stock' por 'cantidad'
+    if local_id:
+        filtros &= Q(local__id=local_id)
+
+    resultados = StockLocal.objects.filter(filtros).select_related('producto', 'local')
+
+    if request.GET.get('export') == 'excel':
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Stock por Local"
+
+        # Estilos
+        header_fill = PatternFill(start_color="F4CCCC", end_color="F4CCCC", fill_type="solid")
+        header_font = Font(bold=True)
+        border = Border(left=Side(border_style="thin", color="000000"),
+                        right=Side(border_style="thin", color="000000"),
+                        top=Side(border_style="thin", color="000000"),
+                        bottom=Side(border_style="thin", color="000000"))
+        align_center = Alignment(horizontal="center", vertical="center")
+        align_left = Alignment(horizontal="left", vertical="center")
+
+        # Encabezados
+        headers = ['ID Producto', 'Nombre', 'Descripción', 'Local', 'Stock']
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = align_center
+            cell.border = border
+
+        # Datos
+        for row_num, r in enumerate(resultados, 2):
+            ws.cell(row=row_num, column=1, value=r.producto.id).alignment = align_center
+            ws.cell(row=row_num, column=2, value=r.producto.nombre).alignment = align_left
+            ws.cell(row=row_num, column=3, value=r.producto.descripcion or '').alignment = align_left
+            ws.cell(row=row_num, column=4, value=r.local.nombre).alignment = align_left
+            ws.cell(row=row_num, column=5, value=r.cantidad).alignment = align_center
+
+            for col_num in range(1, 6):
+                ws.cell(row=row_num, column=col_num).border = border
+
+        # Ancho de columnas
+        widths = {1: 12, 2: 25, 3: 40, 4: 20, 5: 10}
+        for col_num, width in widths.items():
+            ws.column_dimensions[get_column_letter(col_num)].width = width
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="reporte_stock_por_local_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+
+        wb.save(response)
+        return response
+
+    context = {
+        'locales': Local.objects.all(),
+        'resultados': resultados,
+        'local_id': local_id,
+    }
+    return render(request, 'reportes/reporte_stock_por_local.html', context)

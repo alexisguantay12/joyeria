@@ -8,6 +8,7 @@ urlpatterns = [
     path('', views.lista_productos, name='productos'),  # Listado de productos
     # urls.py
     path('producto/imprimir/<int:producto_id>/', views.imprimir_codigo, name='imprimir_codigo'),
+    path('producto/consultar-precio/', views.consultar_precio, name='consultar_precio'),
 
     path('ingreso-mercaderia/', views.ingreso_mercaderia, name='ingreso_mercaderia'),
     path('buscar_producto_por_codigo/', views.buscar_producto_por_codigo, name='buscar_producto_por_codigo'),

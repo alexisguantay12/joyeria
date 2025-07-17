@@ -49,7 +49,7 @@
                         <tr>
                             <th>Producto</th>
                             <th>Nombre</th>
-                            <th>Cantidad</th> 
+                            <th>Cantidad</th>
                             <th class="text-center">Acción</th>
                         </tr>
                     </thead>
@@ -69,24 +69,42 @@
 <!-- Modal de mensaje -->
 <div class="modal fade" id="modalMensaje" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content border-warning">
-        <div class="modal-header bg-warning-subtle">
-            <h6 class="modal-title text-warning"><i class="fas fa-exclamation-circle"></i> Aviso</h6>
-            <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-warning">
+            <div class="modal-header bg-warning-subtle">
+                <h6 class="modal-title text-warning"><i class="fas fa-exclamation-circle"></i> Aviso</h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="modalMensajeTexto" class="mb-0 text-dark"></p>
+            </div>
         </div>
-        <div class="modal-body">
-            <p id="modalMensajeTexto" class="mb-0 text-dark"></p>
+    </div>
+</div>
+
+<!-- Modal Confirmar Transferencia -->
+<div class="modal fade" id="modalConfirmarTransferencia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-success">
+            <div class="modal-header bg-success-subtle">
+                <h6 class="modal-title text-success"><i class="fas fa-check-circle"></i> Confirmar Transferencia</h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-dark">
+                ¿Estás seguro de que deseas confirmar esta transferencia de productos?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success btn-sm" id="btnConfirmarTransferenciaFinal">
+                    <i class="fas fa-check"></i> Sí, Confirmar
+                </button>
+            </div>
         </div>
-      </div>
     </div>
 </div>
 
 <!-- Scripts -->
 <script>
 let productoActual = null;
-const productosIngresados = new Map();
-
-// Guardaremos detalles de productos para actualizar stock
 const detallesProductos = {};
 const scanner = document.getElementById("scanner");
 const detalles = document.getElementById("detalle-ingreso");
@@ -94,14 +112,21 @@ const tipoOperacion = document.getElementById("tipo-operacion");
 const localSelect = document.getElementById("local");
 const modalMensaje = new bootstrap.Modal(document.getElementById("modalMensaje"));
 const modalMensajeTexto = document.getElementById("modalMensajeTexto");
+const modalConfirmarTransferencia = new bootstrap.Modal(document.getElementById("modalConfirmarTransferencia"));
+
+document.querySelectorAll('.modal').forEach(modalEl => {
+    modalEl.addEventListener('hidden.bs.modal', function () {
+        if (scanner) scanner.focus();
+    });
+});
 
 scanner.addEventListener("change", async function() {
     const codigo = this.value.trim();
     if (!codigo) return;
 
-    if (localSelect.value==="") {
+    if (localSelect.value === "") {
         mostrarMensaje("Debe seleccionar un local para continuar.");
-        this.value = ""; 
+        this.value = "";
         return;
     }
 
@@ -112,7 +137,7 @@ scanner.addEventListener("change", async function() {
 
     if (!data.success) {
         mostrarMensaje(data.error || "Artículo no encontrado.");
-        this.value = ""; 
+        this.value = "";
         return;
     }
 
@@ -130,7 +155,7 @@ scanner.addEventListener("change", async function() {
     const item = detallesProductos[productoActual.id];
     if (item.stockRestante <= 0) {
         mostrarMensaje("No hay más stock para agregar.");
-        this.value = ""; 
+        this.value = "";
         return;
     }
 
@@ -138,9 +163,8 @@ scanner.addEventListener("change", async function() {
     item.stockRestante -= 1;
 
     actualizarTabla();
-    this.value = ""; 
+    this.value = "";
 
-    // Desactivar selects al escanear el primer producto
     if (Object.keys(detallesProductos).length === 1) {
         tipoOperacion.disabled = true;
         localSelect.disabled = true;
@@ -155,10 +179,9 @@ function actualizarTabla() {
             <tr data-producto-id="${item.producto.id}">
                 <td><img src="${item.producto.foto}" alt="Imagen" style="height: 60px;" class="rounded shadow-sm"></td>
                 <td>${item.producto.nombre}</td>
-                <td class="cantidad">${item.cantidad}</td> 
+                <td class="cantidad">${item.cantidad}</td>
                 <td class="text-center">
-                    <button class="btn btn-sm btn-outline-danger" 
-                        onClick="eliminarProducto(${item.producto.id})">
+                    <button class="btn btn-sm btn-outline-danger" onClick="eliminarProducto(${item.producto.id})">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </td>
@@ -168,11 +191,9 @@ function actualizarTabla() {
 
 function eliminarProducto(productoId) {
     if (!detallesProductos[productoId]) return;
-
     delete detallesProductos[productoId];
     actualizarTabla();
 
-    // Habilitar nuevamente selects si no quedan productos
     if (Object.keys(detallesProductos).length === 0) {
         tipoOperacion.disabled = false;
         localSelect.disabled = false;
@@ -184,40 +205,50 @@ function mostrarMensaje(texto) {
     modalMensaje.show();
 }
 
-document.getElementById("confirmarTransferenciaBtn").addEventListener("click", async function() {
-    const localId = localSelect.value;
-    const tipo = tipoOperacion.value; 
-    if (localSelect.value==="") {
-        mostrarMensaje("Debe seleccionar un local para continuar.");
-        this.value = ""; 
+// Abre el modal de confirmación
+document.getElementById("confirmarTransferenciaBtn").addEventListener("click", function () {
+    if (Object.keys(detallesProductos).length === 0) {
+        mostrarMensaje("No hay productos para transferir.");
         return;
-    } 
-    console.log('Detalles de productos',detallesProductos)
+    }
+    modalConfirmarTransferencia.show();
+});
+
+// Confirma la transferencia
+document.getElementById("btnConfirmarTransferenciaFinal").addEventListener("click", async function () {
+    const localId = localSelect.value;
+    const tipo = tipoOperacion.value;
+
+    if (!localId) {
+        mostrarMensaje("Debe seleccionar un local para continuar.");
+        return;
+    }
+
     const productos = [];
     for (const id in detallesProductos) {
         productos.push({ id: id, cantidad: detallesProductos[id].cantidad });
     }
 
-    if (productos.length === 0) {
-        alert("No hay productos para procesar.");
-        return;
-    }
+    try {
+        const res = await fetch("{% url 'products_app:registrar_ingreso' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: JSON.stringify({ productos, local_id: localId, tipo })
+        });
 
-    const res = await fetch("{% url 'products_app:registrar_ingreso' %}", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": "{{ csrf_token }}"
-        },
-        body: JSON.stringify({ productos, local_id: localId, tipo })
-    });
-    const data = await res.json();
+        const data = await res.json();
 
-    if (data.success) {
-        alert("Transferencia confirmada.");
-        window.location.href = "{% url 'products_app:lista_ingresos' %}";
-    } else {
-        alert(data.error || "Error al procesar la transferencia.");
+        if (data.success) {
+            window.location.href = "{% url 'products_app:lista_ingresos' %}";
+        } else {
+            mostrarMensaje(data.error || "Error al procesar la transferencia.");
+        }
+    } catch (err) {
+        mostrarMensaje("Error de red o del servidor.");
+        console.error(err);
     }
 });
 </script>
