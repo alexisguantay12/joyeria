@@ -129,66 +129,74 @@ def agregar_producto(request):
     return render(request, 'agregar_producto.html', {'categorias': categorias})
 
 def generar_etiqueta_plegable(nombre_producto, codigo_producto, filename):
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw, ImageFont
     from io import BytesIO
-    from barcode import EAN8
+    from barcode import Code128
     from barcode.writer import ImageWriter
     import os
     from django.conf import settings
+    from django.contrib.staticfiles import finders
 
-    # Asegurar 8 dígitos
-    codigo_producto = str(codigo_producto)
-    codigo_producto = codigo_producto.zfill(8)  
+    # Convertir código a string con ceros a la izquierda (8 dígitos)
+    codigo_str = str(codigo_producto).zfill(6)
 
-    print("Codigo producto",codigo_producto)
-    # Resolución 300 DPI
-    dpi = 300
+    # Generar código de barras CODE128 (no EAN8)
+    code128 = Code128(codigo_str, writer=ImageWriter())
+
+    # Resolución Zebra ZD220
+    dpi = 203
     mm_to_px = lambda mm: int((mm / 25.4) * dpi)
 
-    # Tamaño etiqueta: 66 x 11 mm
+    # Tamaño etiqueta: 66mm x 11mm
     ancho_px = mm_to_px(66)
     alto_px = mm_to_px(11)
 
-    # ⚙️ Ajustes del código de barras
-    ancho_codigo_px = mm_to_px(25.4)   # ✅ más ancho aún
-    alto_codigo_px = mm_to_px(6)   # ✅ más bajo
+    # Tamaño del código de barras dentro de la etiqueta
+    ancho_codigo_px = mm_to_px(29)
+    alto_codigo_px = mm_to_px(6)
 
-    # Crear imagen en blanco
+    # Crear imagen blanca
     etiqueta = Image.new("RGB", (ancho_px, alto_px), "white")
     draw = ImageDraw.Draw(etiqueta)
 
-    # Generar código EAN8 en buffer
+    # Generar imagen del código
     buffer = BytesIO()
-    print("Codigo:",codigo_producto)
-    code = EAN8(codigo_producto, writer=ImageWriter())
-    code.write(buffer, {
-        "module_width": 0.45,     # barras más anchas
+    code128.write(buffer, {
+        "module_width": 0.37,
         "module_height": alto_codigo_px,
         "quiet_zone": 1.0,
         "font_size": 0,
         "write_text": False
     })
-    print("Code:",codigo_producto)
     buffer.seek(0)
     img_barcode = Image.open(buffer).convert("RGB")
-
-    # Redimensionar exactamente
     img_barcode = img_barcode.resize((ancho_codigo_px, alto_codigo_px), Image.LANCZOS)
 
-    # 🔧 Posición (bien arriba, pegado a la izquierda)
+    # Pegar el código en la etiqueta
     x_barcode = mm_to_px(1)
-    y_barcode = mm_to_px(0)  # bien arriba
-
+    y_barcode = mm_to_px(0)
     etiqueta.paste(img_barcode, (x_barcode, y_barcode))
 
-    # Guardar
+    # Fuente para el número debajo
+    font_size = mm_to_px(2.5)
+    font_path = finders.find("fonts/DejaVuSans.ttf")
+    font = ImageFont.truetype(font_path, font_size) if font_path else ImageFont.load_default()
+
+    # Escribir texto
+    text = codigo_str
+    text_width, text_height = draw.textsize(text, font=font)
+    ajuste_izquierda = mm_to_px(0.8)  # Valor en píxeles para mover el texto hacia la izquierda
+    x_text = x_barcode + (ancho_codigo_px - text_width) // 2 - ajuste_izquierda
+    y_text = y_barcode + alto_codigo_px
+    draw.text((x_text, y_text), text, fill="black", font=font)
+
+    # Guardar etiqueta
     etiquetas_dir = os.path.join(settings.MEDIA_ROOT, 'etiquetas')
     os.makedirs(etiquetas_dir, exist_ok=True)
     ruta_completa = os.path.join(etiquetas_dir, f"{filename}.png")
     etiqueta.save(ruta_completa)
 
     return f"etiquetas/{filename}.png"
-
 
 
 @csrf_exempt
