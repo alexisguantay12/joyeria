@@ -139,6 +139,7 @@ def generar_etiqueta_plegable(nombre_producto, codigo_producto, filename):
 
     # Convertir código a string con ceros a la izquierda (8 dígitos)
     codigo_str = str(codigo_producto).zfill(6)
+    codigo_art = str(codigo_producto)
 
     # Generar código de barras CODE128 (no EAN8)
     code128 = Code128(codigo_str, writer=ImageWriter())
@@ -154,6 +155,7 @@ def generar_etiqueta_plegable(nombre_producto, codigo_producto, filename):
     # Tamaño del código de barras dentro de la etiqueta
     ancho_codigo_px = mm_to_px(29)
     alto_codigo_px = mm_to_px(6)
+    alto_codigo_px_2 = mm_to_px(5.2)
 
     # Crear imagen blanca
     etiqueta = Image.new("RGB", (ancho_px, alto_px), "white")
@@ -179,7 +181,7 @@ def generar_etiqueta_plegable(nombre_producto, codigo_producto, filename):
 
     # Fuente para el número debajo
     font_size = mm_to_px(2.5)
-    font_path = finders.find("fonts/DejaVuSans.ttf")
+    font_path = finders.find("fonts/DejaVuSans-Bold.ttf")
     font = ImageFont.truetype(font_path, font_size) if font_path else ImageFont.load_default()
 
     # Escribir texto
@@ -187,8 +189,25 @@ def generar_etiqueta_plegable(nombre_producto, codigo_producto, filename):
     text_width, text_height = draw.textsize(text, font=font)
     ajuste_izquierda = mm_to_px(0.8)  # Valor en píxeles para mover el texto hacia la izquierda
     x_text = x_barcode + (ancho_codigo_px - text_width) // 2 - ajuste_izquierda
-    y_text = y_barcode + alto_codigo_px
+    y_text = y_barcode + alto_codigo_px_2
     draw.text((x_text, y_text), text, fill="black", font=font)
+    
+    
+    # --- NUEVO: Leyenda "Art. <id>" a la derecha del código ---
+    leyenda = f"Art. {codigo_art}"
+    font_size_leyenda = mm_to_px(3.6)
+
+    # Intentar cargar fuente en negrita
+    font_bold_path = finders.find("fonts/DejaVuSans-Bold.ttf")
+    if font_bold_path:
+        font_leyenda = ImageFont.truetype(font_bold_path, font_size_leyenda)
+    else:
+        font_leyenda = ImageFont.truetype(font_path, font_size_leyenda) if font_path else ImageFont.load_default()
+
+    text_width_leyenda, text_height_leyenda = draw.textsize(leyenda, font=font_leyenda)
+    x_leyenda = x_barcode + ancho_codigo_px + mm_to_px(5)  # Espacio entre código y texto
+    y_leyenda = y_barcode + (alto_codigo_px - text_height_leyenda) // 2
+    draw.text((x_leyenda, y_leyenda), leyenda, fill="black", font=font_leyenda)
 
     # Guardar etiqueta
     etiquetas_dir = os.path.join(settings.MEDIA_ROOT, 'etiquetas')
