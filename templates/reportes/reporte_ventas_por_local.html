@@ -9,20 +9,29 @@
         </div>
         <div class="card-body">
             <form method="get" class="row g-3 mb-3">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label for="fecha_desde" class="form-label">Desde</label>
                     <input type="date" id="fecha_desde" name="fecha_desde" value="{{ fecha_desde }}" class="form-control">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label for="fecha_hasta" class="form-label">Hasta</label>
                     <input type="date" id="fecha_hasta" name="fecha_hasta" value="{{ fecha_hasta }}" class="form-control">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label for="local" class="form-label">Local</label>
                     <select name="local" id="local" class="form-select">
                         <option value="">Todos los locales</option>
                         {% for loc in locales %}
                             <option value="{{ loc.id }}" {% if local_id == loc.id|stringformat:"s" %}selected{% endif %}>{{ loc.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="usuario" class="form-label">Usuario</label>
+                    <select name="usuario" id="usuario" class="form-select">
+                        <option value="">Todos los usuarios</option>
+                        {% for user in usuarios %}
+                            <option value="{{ user.id }}" {% if user_id == user.id|stringformat:"s" %}selected{% endif %}>{{ user.username }}</option>
                         {% endfor %}
                     </select>
                 </div>

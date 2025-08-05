@@ -105,7 +105,7 @@ def agregar_producto(request):
 
             # Crear etiqueta térmica plegable
             codigo = producto.id
-            etiqueta_rel_path = generar_etiqueta_plegable(producto.nombre, codigo, codigo)
+            etiqueta_rel_path = generar_etiqueta_plegable(producto.categoria.nombre, codigo, codigo)
             producto.codigo_barras = etiqueta_rel_path
             producto.save()
 
@@ -125,7 +125,7 @@ def agregar_producto(request):
 
         return redirect('products_app:productos')
 
-    categorias = Categoria.objects.all()
+    categorias = Categoria.objects.all().order_by('nombre')
     return render(request, 'agregar_producto.html', {'categorias': categorias})
 
 def generar_etiqueta_plegable(nombre_producto, codigo_producto, filename):
@@ -194,8 +194,8 @@ def generar_etiqueta_plegable(nombre_producto, codigo_producto, filename):
     
     
     # --- NUEVO: Leyenda "Art. <id>" a la derecha del código ---
-    leyenda = f"Art. {codigo_art}"
-    font_size_leyenda = mm_to_px(3.6)
+    leyenda = f"{nombre_producto}"
+    font_size_leyenda = mm_to_px(3.4)
 
     # Intentar cargar fuente en negrita
     font_bold_path = finders.find("fonts/DejaVuSans-Bold.ttf")
@@ -253,8 +253,12 @@ def consultar_precio(request):
     except Producto.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Producto no encontrado'})
 
+    local_id = request.session.get('local_id')
+    local = Local.objects.get(id=local_id) if local_id else None
+
+
     # Buscar el stock, si no existe devolver 0
-    stock = StockLocal.objects.filter(producto=producto, local=request.user.local).first()
+    stock = StockLocal.objects.filter(producto=producto, local=local).first()
     cantidad = stock.cantidad if stock else 0
     fotos = [img.imagen.url for img in producto.imagenes.all()]
     foto_principal = fotos[0] if fotos else ""
@@ -299,8 +303,10 @@ def buscar_producto_por_codigo_venta(request):
     try:
         producto = Producto.objects.get(id=codigo) 
         # Intentamos obtener el stock
+        local_id = request.session.get('local_id')
+        local = Local.objects.get(id=local_id) if local_id else None    
         try:
-            stock = StockLocal.objects.get(producto=producto, local=request.user.local)
+            stock = StockLocal.objects.get(producto=producto, local=local)
             cantidad_stock = stock.cantidad
         except StockLocal.DoesNotExist:
             cantidad_stock = 0
@@ -360,7 +366,9 @@ def detalle_producto(request, producto_id):
     if es_admin:
         stock_por_local = StockLocal.objects.filter(producto=producto).select_related('local')
     else:
-        stock_por_local = StockLocal.objects.filter(producto=producto, local=request.user.local)
+        local_id = request.session.get('local_id')
+        local = Local.objects.get(id=local_id) if local_id else None
+        stock_por_local = StockLocal.objects.filter(producto=producto, local=local)
 
     total_stock = sum(s.cantidad for s in stock_por_local)
 

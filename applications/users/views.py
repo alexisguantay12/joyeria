@@ -11,6 +11,25 @@ from django.contrib.auth.forms import AuthenticationForm
 
 from django.contrib.auth.decorators import login_required
 
+
+from applications.productos.models import Local  # o donde tengas definido Local
+
+@login_required
+def seleccionar_local(request):
+    if request.method == 'POST':
+        local_id = request.POST.get('local_id') 
+        if Local.objects.filter(id=local_id).exists():
+            request.session['local_id'] = int(local_id) 
+            return redirect('core_app:home')  # Cambiá por la ruta principal del sistema
+        return render(request, 'seleccionar_local.html', {
+            'locales': Local.objects.all(),
+            'error': 'Local no válido'
+        })
+
+    return render(request, 'seleccionar_local.html', {
+        'locales': Local.objects.all()
+    })
+
 @login_required
 def crear_usuario(request):
     if request.method == 'POST':
@@ -27,9 +46,8 @@ def lista_usuarios(request):
     usuarios = User.objects.all()
     return render(request, 'users/lista_usuarios.html', {'usuarios': usuarios})
 
- 
 
- 
+
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('core_app:home')

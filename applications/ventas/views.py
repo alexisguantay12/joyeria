@@ -9,7 +9,7 @@ from django.utils.decorators import method_decorator
 
 # Modelos de tu aplicación
 from .models import Venta, DetalleVenta
-from applications.productos.models import Producto,StockLocal  # Ajustá si cambia la ubicación
+from applications.productos.models import Producto,StockLocal,Local  # Ajustá si cambia la ubicación
 
 
 def no_es_vendedor(user):
@@ -51,7 +51,9 @@ def registrar_venta_api(request):
                 return JsonResponse({"success": False, "error": "No se enviaron productos."})
 
             with transaction.atomic():
-                venta = Venta.objects.create(user_made=request.user, local=request.user.local)
+                local_id = request.session.get('local_id')
+                local = Local.objects.get(id=local_id) if local_id else None
+                venta = Venta.objects.create(user_made=request.user, local=local)
 
                 for item in productos:
                     try:

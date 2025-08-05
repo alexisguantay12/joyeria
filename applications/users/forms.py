@@ -19,16 +19,15 @@ class CrearUsuarioForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='Rol'
     )
-    local = forms.ModelChoiceField(
-        queryset=Local.objects.all(),
+    nombre = forms.CharField( 
         required=False,
-        widget=forms.Select(attrs={'class': 'form-select'}),
-        label='Local'
+        widget=forms.TextInput(attrs={'class': 'form-select'}),
+        label='nombre'
     )
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'rol', 'local']
+        fields = ['username', 'email', 'password', 'rol', 'nombre']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario'}),
             'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Correo electrónico'}),
@@ -49,8 +48,7 @@ class CrearUsuarioForm(forms.ModelForm):
             group, _ = Group.objects.get_or_create(name=group_name)
             user.groups.add(group)
 
-            # Asociar local si es vendedor
-            if group_name == 'vendedor' and self.cleaned_data['local']:
-                user.local = self.cleaned_data['local']
-                user.save()
+            # Asociar local si es vendedor 
+            user.nombre = self.cleaned_data['nombre']
+            user.save()
         return user

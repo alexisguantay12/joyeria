@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, F, DecimalField, ExpressionWrapper, Q
 from applications.productos.models import Local,StockLocal
 from applications.ventas.models import DetalleVenta
+from applications.users.models import User
 from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Side, PatternFill, Font
@@ -15,7 +16,7 @@ def reporte_ventas_por_local(request):
     fecha_desde = request.GET.get('fecha_desde')
     fecha_hasta = request.GET.get('fecha_hasta')
     local_id = request.GET.get('local')
-
+    user_id = request.GET.get('usuario')
     filtros = Q()
     if fecha_desde:
         filtros &= Q(venta__fecha__date__gte=fecha_desde)
@@ -23,6 +24,8 @@ def reporte_ventas_por_local(request):
         filtros &= Q(venta__fecha__date__lte=fecha_hasta)
     if local_id:
         filtros &= Q(venta__local__id=local_id)
+    if user_id:
+        filtros &= Q(venta__user_made__id=user_id)
 
     resultados = DetalleVenta.objects.filter(filtros).annotate(
         subtotal_calculado=ExpressionWrapper(
@@ -118,6 +121,7 @@ def reporte_ventas_por_local(request):
         'total': total,
         'fecha_desde': fecha_desde,
         'fecha_hasta': fecha_hasta,
+        'usuarios':User.objects.all(),
         'local_id': local_id,
     }
     return render(request, 'reportes/reporte_ventas_por_local.html', context)

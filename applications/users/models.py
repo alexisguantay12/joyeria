@@ -7,10 +7,9 @@ from django.db import models
 
 
 class User(AbstractUser):
-    local = models.ForeignKey(
-        'productos.Local',  # o el nombre de tu modelo de locales
-        on_delete=models.SET_NULL,
+    nombre = models.CharField(
         null=True,
         blank=True,
-        verbose_name="Local asignado"
+        max_length=100,
+        verbose_name="Nombre"
     )

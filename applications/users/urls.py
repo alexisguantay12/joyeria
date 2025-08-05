@@ -18,4 +18,5 @@ urlpatterns = [
     path('password-cambiado-ok/', auth_views.PasswordChangeDoneView.as_view(
         template_name='users/password_cambiado_ok.html'
     ), name='password_cambiado_ok'),
+    path('seleccionar_local/', views.seleccionar_local, name='seleccionar_local'),
 ]
