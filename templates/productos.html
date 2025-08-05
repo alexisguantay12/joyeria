@@ -47,8 +47,7 @@
                                 <td>{{ producto.nombre }}</td>
                                 <td>{{ producto.descripcion|truncatechars:50 }}</td>
                                 <td>{{ producto.categoria }}</td>
-                                <td class="sin-redireccion">
-                                    <a href="#" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
+                                <td class="sin-redireccion"> 
                                     <button class="btn btn-sm btn-danger" title="Eliminar" 
                                             data-producto="{{ producto.id }}" 
                                             data-bs-toggle="modal" 
@@ -87,16 +86,33 @@
     </div>
 </div>
 
+<!-- Modal de error por producto implicado en transferencia -->
+<div class="modal fade" id="modalErrorTransferencia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-warning">
+            <div class="modal-header bg-warning-subtle">
+                <h6 class="modal-title text-warning"><i class="fas fa-exclamation-triangle"></i> Producto no eliminable</h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">No es posible eliminar este producto porque ya fue implicado en una transferencia de stock.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-warning btn-sm" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast de mensaje de éxito -->
 <div id="toastAccionExitosa" class="toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="2000">
     <div class="d-flex">
         <div class="toast-body">
-            Acción realizada con éxito.
+            Producto eliminado con éxito.
         </div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
     </div>
 </div>
-
 
 <!-- Estilos para hover personalizado -->
 <style>
@@ -112,10 +128,11 @@
 <script>
     let idProductoAEliminar = null;
     const modalEliminar = new bootstrap.Modal(document.getElementById('modalEliminar'));
+    const modalErrorTransferencia = new bootstrap.Modal(document.getElementById('modalErrorTransferencia'));
 
     // Asignar id al producto seleccionado para eliminar
     document.querySelectorAll('[data-bs-target="#modalEliminar"]').forEach(button => {
-        button.addEventListener('click', function (e) {
+        button.addEventListener('click', function () {
             idProductoAEliminar = this.getAttribute('data-producto');
         });
     });
@@ -132,18 +149,23 @@
         })
         .then(res => res.json())
         .then(data => {
+            modalEliminar.hide();
+
             if (data.success) {
                 document.getElementById(`producto-${idProductoAEliminar}`).remove();
-                modalEliminar.hide();
-
-                // Mostrar el toast de éxito
-                var toast = new bootstrap.Toast(document.getElementById('toastAccionExitosa'));
-                toast.show();
+                new bootstrap.Toast(document.getElementById('toastAccionExitosa')).show();
             } else {
-                alert(data.error || "Error al eliminar el producto.");
+                if (data.error && data.error.includes("transferencia de stock")) {
+                    modalErrorTransferencia.show();
+                } else {
+                    alert(data.error || "Error al eliminar el producto.");
+                }
             }
         })
-        .catch(() => alert("Error de red al intentar eliminar."));
+        .catch(() => {
+            modalEliminar.hide();
+            alert("Error de red al intentar eliminar.");
+        });
     });
 
     // Redirección al hacer clic en la fila (excepto en acciones)
@@ -155,7 +177,7 @@
         });
     });
 
-    $(document).ready(function() {
+    $(document).ready(function () {
         $('#tabla-productos').DataTable({
             language: {
                 lengthMenu: "Mostrar _MENU_ registros",
@@ -175,13 +197,10 @@
             order: [[0, 'desc']]
         });
 
-        // Mostrar toast si se agregó un producto (?added=1)
+        // Mostrar toast si se agregó un producto
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('added') === '1') {
-            var toast = new bootstrap.Toast(document.getElementById('toastAccionExitosa'));
-            toast.show();
-
-            // Limpia el parámetro de la URL sin recargar
+            new bootstrap.Toast(document.getElementById('toastAccionExitosa')).show();
             window.history.replaceState(null, null, window.location.pathname);
         }
     });

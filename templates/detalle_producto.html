@@ -9,7 +9,7 @@
         <div class="card-body row">
             <div class="col-md-4 text-center mb-3">
                 {% if producto.imagenes.all %}
-                    <div id="productoCarousel" class="carousel slide" data-bs-ride="carousel">
+                    <div id="productoCarousel" class="carousel slide" data-bs-ride="carousel" style="cursor: zoom-in;" onclick="abrirGaleria()">
                         <div class="carousel-inner">
                             {% for imagen in producto.imagenes.all %}
                                 <div class="carousel-item {% if forloop.first %}active{% endif %}">
@@ -65,6 +65,43 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Galería de Imágenes Ampliadas -->
+<div class="modal fade" id="modalImagenesAmpliadas" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-dark text-white">
+      <div class="modal-header border-0">
+        <h5 class="modal-title">Galería del Producto</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body p-0" style="height: 85vh;"> <!-- Ajusté la altura del modal -->
+        <div id="carouselAmpliado" class="carousel slide" data-bs-ride="carousel">
+          <div class="carousel-inner">
+            {% for imagen in producto.imagenes.all %}
+            <div class="carousel-item {% if forloop.first %}active{% endif %}">
+              <div class="d-flex justify-content-center align-items-center" style="height: 100%;"> <!-- Hacer que el contenedor ocupe toda la altura -->
+                <img src="{{ imagen.imagen.url }}" class="img-fluid rounded shadow"
+                    style="width: 100%; height: 100%; object-fit: contain;">
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% if producto.imagenes.count > 1 %}
+          <button class="carousel-control-prev" type="button" data-bs-target="#carouselAmpliado" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Anterior</span>
+          </button>
+          <button class="carousel-control-next" type="button" data-bs-target="#carouselAmpliado" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Siguiente</span>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- Modal de Stock -->
 <div class="modal fade" id="modalStock" tabindex="-1" aria-labelledby="modalStockLabel" aria-hidden="true">
@@ -170,5 +207,12 @@
         </div>
     </div>
 </div>
+
+<!-- Script para abrir galería modal -->
+<script>
+  function abrirGaleria() {
+    new bootstrap.Modal(document.getElementById('modalImagenesAmpliadas')).show();
+  }
+</script>
 
 {% endblock %}

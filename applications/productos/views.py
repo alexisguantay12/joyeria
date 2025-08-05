@@ -222,25 +222,35 @@ def generar_etiqueta_plegable(nombre_producto, codigo_producto, filename):
 @login_required
 def eliminar_producto_api(request, id):
     """
-    Elimina lógicamente una venta y sus detalles (soft delete),
-    devolviendo el stock al local correspondiente.
+    Elimina lógicamente un producto si no está implicado en una transferencia de stock.
     """
     if request.method == "POST":
         try:
             with transaction.atomic():
                 producto = Producto.objects.get(id=id)
+
+                # Verificar si el producto está en alguna transferencia
+                implicado_en_transferencia = MovimientoStock.objects.filter(
+                    producto=producto
+                ).exists()
+
+                if implicado_en_transferencia:
+                    return JsonResponse({
+                        "success": False,
+                        "error": "No se puede eliminar el producto porque está implicado en una transferencia de stock."
+                    })
+
                 producto.user_deleted = request.user
                 producto.delete()  # Soft delete
-                # Devolver stock y eliminar detalles 
 
                 return JsonResponse({"success": True})
-        except Venta.DoesNotExist:
-            return JsonResponse({"success": False, "error": "Venta no encontrada"})
+
+        except Producto.DoesNotExist:
+            return JsonResponse({"success": False, "error": "Producto no encontrado"})
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)})
 
     return JsonResponse({"success": False, "error": "Método no permitido"}, status=405)
-
 
 @login_required
 def consultar_precio(request):
