@@ -24,7 +24,9 @@
                                 <th>Nombre</th>
                                 <th>Descripción</th>
                                 <th>Categoría</th>
+                                {% if request.user|is_in_group:"administrador" %}
                                 <th>Acciones</th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody>
@@ -47,6 +49,7 @@
                                 <td>{{ producto.nombre }}</td>
                                 <td>{{ producto.descripcion|truncatechars:50 }}</td>
                                 <td>{{ producto.categoria }}</td>
+                                {% if request.user|is_in_group:"administrador" %}
                                 <td class="sin-redireccion"> 
                                     <button class="btn btn-sm btn-danger" title="Eliminar" 
                                             data-producto="{{ producto.id }}" 
@@ -55,6 +58,7 @@
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </td>
+                                {% endif %}
                             </tr>
                             {% endfor %}
                         </tbody>                        

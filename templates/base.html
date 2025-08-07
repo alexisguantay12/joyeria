@@ -73,11 +73,11 @@
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'core_app:home' %}"><i class="fas fa-home"></i> Inicio</a>
-                </li>
-                {% if request.user|is_in_group:"administrador" %}
+                </li> 
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'products_app:productos' %}"><i class="fas fa-gem"></i> Productos</a>
                 </li>
+                {% if request.user|is_in_group:"administrador" %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'products_app:lista_ingresos' %}"><i class="fas fa-box-open"></i> Transferencias</a>
                 </li>

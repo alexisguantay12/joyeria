@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-
+{% load group_tags %}
 {% block content %}
 <div class="container py-4">
     <div class="card shadow-sm">
@@ -47,16 +47,20 @@
                     {% endif %}
                 </ul>
 
-                <div class="d-flex flex-wrap gap-2">                   
+                <div class="d-flex flex-wrap gap-2">    
+                    {% if request.user|is_in_group:"administrador" %}        
                     <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#modalVentas">
                         <i class="fas fa-list"></i> Ver Ventas
                     </button>
+                    {% endif %}   
                     <a href="#" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#modalStock">
                         <i class="fas fa-warehouse"></i> Ver Stock
                     </a>
+                    {% if request.user|is_in_group:"administrador" %}
                     <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalImprimir">
                         <i class="fas fa-print"></i> Imprimir Etiquetas
                     </button>
+                    {% endif %}       
                     <a href="{% url 'products_app:productos' %}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left"></i> Volver a la lista
                     </a>

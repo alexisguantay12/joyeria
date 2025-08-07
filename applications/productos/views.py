@@ -298,14 +298,22 @@ def imprimir_etiquetas(request, producto_id):
     return redirect('products_app:detalle_producto', producto_id=producto.id)
 
 
-@login_required
-@user_passes_test(no_es_vendedor)
+@login_required 
 def lista_productos(request):
+    local_id = request.session.get('local_id')
+    local = Local.objects.get(id=local_id) if local_id else None
 
-    productos = Producto.objects.all().order_by('-id')  # El ID más alto primero
-    
+    # Si el usuario está en el grupo "cargador", filtramos por stock local
+    if request.user.groups.filter(name='vendedor').exists():
+        productos = Producto.objects.filter(
+            stocklocal__local=local,
+            stocklocal__cantidad__gt=0
+        ).distinct().order_by('-id')
+    else:
+        # Admin u otros roles no vendedores ni cargadores: todos los productos
+        productos = Producto.objects.all().order_by('-id')
+
     return render(request, 'productos.html', {'productos': productos})
-
 
 @login_required
 def buscar_producto_por_codigo_venta(request):
@@ -367,6 +375,7 @@ def buscar_producto_por_codigo(request):
         return JsonResponse({"success": False, "error": "Producto no encontrado"})
  
 from applications.ventas.models import DetalleVenta  # Asegurate de importar el modelo
+
 
 @login_required
 def detalle_producto(request, producto_id):
@@ -525,7 +534,7 @@ def eliminar_ingreso(request, ingreso_id):
     lote = get_object_or_404(IngresoLote, id=ingreso_id)
 
     # ✅ Verificar si pasaron más de 30 minutos
-    tiempo_limite = lote.fecha + timedelta(minutes=0)
+    tiempo_limite = lote.fecha + timedelta(minutes=30)
     if timezone.now() > tiempo_limite:
         return JsonResponse({
             "success": False,
